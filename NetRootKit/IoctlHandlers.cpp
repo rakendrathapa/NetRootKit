@@ -10,14 +10,14 @@ NTSTATUS IoctlHandlers::HandleTestConnection(_In_ PIRP Irp, _In_ const size_t Bu
 	char* inputBuf = static_cast<char*>(Irp->AssociatedIrp.SystemBuffer);
 	char* outputBuf = static_cast<char*>(Irp->AssociatedIrp.SystemBuffer);
 
-	KdPrint(("TEST_CONN-got input: %s\n", inputBuf));
+	KdPrint(("TEST_CONNECTION: got input:[%s]\n", inputBuf));
 
-	char* outputPrefix = "hello from kernel mode :-) recived input-";
+	char* outputPrefix = "recieved input-";
 
 	//return "STATUS_BUFFER_TOO_SMALL" if return buffer length is too small
 	if (BufferSize < (strlen(inputBuf) + strlen(outputPrefix) + 1)) {
 
-		KdPrint(("TEST_CONN-ouput buffer too small.\n"));
+		KdPrint(("TEST_CONNECTION: Ouyput buffer too small.\n"));
 		status = STATUS_BUFFER_TOO_SMALL;
 		Irp->IoStatus.Information = 0;
 
@@ -47,7 +47,7 @@ NTSTATUS IoctlHandlers::HandleTestConnection(_In_ PIRP Irp, _In_ const size_t Bu
 		//free the paged pool buffer
 		ExFreePoolWithTag(readBuf, TAG_NET);
 
-		KdPrint(("TEST_CONN-sending to usermode %s\n", outputBuf));
+		KdPrint(("TEST_CONNECTION: Sending to usermode %s\n", outputBuf));
 		status = STATUS_SUCCESS;
 		Irp->IoStatus.Information = strlen(outputBuf) + 1;
 	}

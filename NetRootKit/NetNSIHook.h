@@ -4,8 +4,6 @@
 
 namespace NsiHook
 {
-	USHORT htons(USHORT a);
-
 	NTSTATUS NetHookNSIProxy();
 
 	BOOLEAN NetNSIFreeHook();
