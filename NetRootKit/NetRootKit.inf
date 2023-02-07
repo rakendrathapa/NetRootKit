@@ -1,0 +1,60 @@
+;
+; NetRootKit.inf
+;
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=System
+ClassGuid={4d36e97d-e325-11ce-bfc1-08002be10318}
+Provider=%ManufacturerName%
+DriverVer=
+CatalogFile=NetRootKit.cat
+PnpLockdown=1
+
+;This template is supported for OS version 17763 (Windows 10 version 1809) and after.
+;For Windows OS prior to Windows 10 1809 set DefaultDestDir = 12
+[DestinationDirs]
+DefaultDestDir = 12
+
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+NetRootKit.sys = 1
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+%ManufacturerName%=Standard,NT$ARCH$
+
+[Standard.NT$ARCH$]
+%NetRootKit.DeviceDesc%=NetRootKit_Device, Root\NetRootKit
+
+[NetRootKit_Device.NT]
+CopyFiles=Drivers_Dir
+
+[Drivers_Dir]
+NetRootKit.sys
+
+;-------------- Service installation
+[NetRootKit_Device.NT.Services]
+AddService = NetRootKit,%SPSVCINST_ASSOCSERVICE%, NetRootKit_Service_Inst
+
+; -------------- NSI_Rootkit driver install sections
+[NetRootKit_Service_Inst]
+DisplayName    = %NetRootKit.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\NetRootKit.sys
+
+[Strings]
+SPSVCINST_ASSOCSERVICE= 0x00000002
+ManufacturerName="Rakendra Thapa" ;TODO: Replace with your manufacturer name
+DiskName="NetRootKit Source Disk"
+NetRootKit.DeviceDesc = "NetRootKit"
+NetRootKit.SVCDESC = "NetRootKit"
+
