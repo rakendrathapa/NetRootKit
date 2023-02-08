@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NetRootKit", "NetRootKit\Ne
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NetRootKitController", "NetRootKitController\NetRootKitController.vcxproj", "{F0AB96D3-9290-43B6-ACC9-3011E3E843F4}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GetTCPConnections", "GetTCPConnections\GetTCPConnections.vcxproj", "{ADCBBCB9-C559-4E98-9BE5-BA7137240403}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM = Debug|ARM
@@ -59,6 +61,22 @@ Global
 		{F0AB96D3-9290-43B6-ACC9-3011E3E843F4}.Release|x64.Build.0 = Release|x64
 		{F0AB96D3-9290-43B6-ACC9-3011E3E843F4}.Release|x86.ActiveCfg = Release|Win32
 		{F0AB96D3-9290-43B6-ACC9-3011E3E843F4}.Release|x86.Build.0 = Release|Win32
+		{ADCBBCB9-C559-4E98-9BE5-BA7137240403}.Debug|ARM.ActiveCfg = Debug|ARM
+		{ADCBBCB9-C559-4E98-9BE5-BA7137240403}.Debug|ARM.Build.0 = Debug|ARM
+		{ADCBBCB9-C559-4E98-9BE5-BA7137240403}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{ADCBBCB9-C559-4E98-9BE5-BA7137240403}.Debug|ARM64.Build.0 = Debug|ARM64
+		{ADCBBCB9-C559-4E98-9BE5-BA7137240403}.Debug|x64.ActiveCfg = Debug|x64
+		{ADCBBCB9-C559-4E98-9BE5-BA7137240403}.Debug|x64.Build.0 = Debug|x64
+		{ADCBBCB9-C559-4E98-9BE5-BA7137240403}.Debug|x86.ActiveCfg = Debug|Win32
+		{ADCBBCB9-C559-4E98-9BE5-BA7137240403}.Debug|x86.Build.0 = Debug|Win32
+		{ADCBBCB9-C559-4E98-9BE5-BA7137240403}.Release|ARM.ActiveCfg = Release|ARM
+		{ADCBBCB9-C559-4E98-9BE5-BA7137240403}.Release|ARM.Build.0 = Release|ARM
+		{ADCBBCB9-C559-4E98-9BE5-BA7137240403}.Release|ARM64.ActiveCfg = Release|ARM64
+		{ADCBBCB9-C559-4E98-9BE5-BA7137240403}.Release|ARM64.Build.0 = Release|ARM64
+		{ADCBBCB9-C559-4E98-9BE5-BA7137240403}.Release|x64.ActiveCfg = Release|x64
+		{ADCBBCB9-C559-4E98-9BE5-BA7137240403}.Release|x64.Build.0 = Release|x64
+		{ADCBBCB9-C559-4E98-9BE5-BA7137240403}.Release|x86.ActiveCfg = Release|Win32
+		{ADCBBCB9-C559-4E98-9BE5-BA7137240403}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
