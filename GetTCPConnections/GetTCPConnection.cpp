@@ -1,8 +1,11 @@
 # define _WINSOCK_DEPRECATED_NO_WARNINGS
+
+#include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 // Need to link with Iphlpapi.lib and Ws2_32.lib
 #pragma comment(lib, "iphlpapi.lib")
@@ -251,6 +254,103 @@ int ReturnGetTCPTable2()
     return 0;
 }
 
+int DeleteIPAddress()
+{
+    // Declare and initialize variables
+    PMIB_IPADDRTABLE pIPAddrTable;
+    DWORD dwSize = 0;
+    DWORD dwRetVal;
+
+    // IP and mask we will be adding
+    UINT iaIPAddress;
+    UINT imIPMask;
+
+    // Variables where handles to the added IP will be returned
+    ULONG NTEContext = 0;
+    ULONG NTEInstance = 0;
+
+    LPVOID lpMsgBuf;
+
+
+    // Before calling AddIPAddress we use GetIpAddrTable to get
+    // an adapter to which we can add the IP.
+    pIPAddrTable = (MIB_IPADDRTABLE*)malloc(sizeof(MIB_IPADDRTABLE));
+    if (pIPAddrTable == nullptr)
+    {
+        fprintf(stderr, "\tError Allocating memory to MIB_IPADDRTABLE\n");
+        return -1;
+    }
+
+    // Make an initial call to GetIpAddrTable to get the
+    // necessary size into the dwSize variable
+    if (GetIpAddrTable(pIPAddrTable, &dwSize, 0) == ERROR_INSUFFICIENT_BUFFER) 
+    {
+        free(pIPAddrTable);
+        pIPAddrTable = (MIB_IPADDRTABLE*)malloc(dwSize);
+        if (pIPAddrTable == nullptr)
+        {
+            fprintf(stderr, "\tError Allocating memory to MIB_IPADDRTABLE\n");
+            return -1;
+        }
+    }
+
+    // Make a second call to GetIpAddrTable to get the
+    // actual data we want
+    if ((dwRetVal = GetIpAddrTable(pIPAddrTable, &dwSize, 0)) == NO_ERROR) {
+        printf("\tAddress: %ld\n", pIPAddrTable->table[0].dwAddr);
+        printf("\tMask:    %ld\n", pIPAddrTable->table[0].dwMask);
+        printf("\tIndex:   %ld\n", pIPAddrTable->table[0].dwIndex);
+        printf("\tBCast:   %ld\n", pIPAddrTable->table[0].dwBCastAddr);
+        printf("\tReasm:   %ld\n", pIPAddrTable->table[0].dwReasmSize);
+    }
+    else 
+    {
+        printf("Call to GetIpAddrTable failed.\n");
+    }
+
+    //
+    // IP and mask we will be adding
+    //
+    iaIPAddress = inet_addr("192.168.0.27");
+    imIPMask = inet_addr("255.255.255.0");
+    if ((dwRetVal = AddIPAddress(
+        iaIPAddress,
+        imIPMask,
+        pIPAddrTable->table[0].dwIndex,
+        &NTEContext, 
+        &NTEInstance)) == NO_ERROR) 
+    {
+        printf("\tIP address added.\n");
+    }
+
+    else 
+    {
+        fprintf(stderr, "\tError adding IP address.\n");
+        if (FormatMessage(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 
+            NULL, 
+            dwRetVal, 
+            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),       // Default language
+            (LPTSTR)&lpMsgBuf, 0, 
+            NULL)) 
+        {
+            printf("\tError: %s", (LPSTR)lpMsgBuf);
+        }
+        LocalFree(lpMsgBuf);
+    }
+
+    // Delete the IP we just added using the NTEContext
+    // variable where the handle was returned       
+    if ((dwRetVal = DeleteIPAddress(NTEContext)) == NO_ERROR) {
+        printf("\tIP Address Deleted.\n");
+    }
+    else {
+        printf("\tCall to DeleteIPAddress failed.\n");
+    }
+
+    return 0;
+
+}
 int main(int argc, char* argv[])
 {
     if (argc != 2)

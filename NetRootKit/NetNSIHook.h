@@ -1,5 +1,4 @@
 #pragma once
-
 #include <wdm.h>
 
 namespace NsiHook
@@ -36,7 +35,7 @@ namespace NsiHook
 	//
 	//
 	constexpr ULONG IOCTL_NSI_GETALLPARAM = 0x12001B;
-	typedef unsigned long       DWORD;
+	typedef unsigned long DWORD;
 
 	extern PDRIVER_OBJECT g_NetNSIProxyDriverObject;
 	extern PDRIVER_DISPATCH g_NetOldNSIProxyDeviceControl;
@@ -64,7 +63,7 @@ namespace NsiHook
 		SIZE_T EntrySize;
 		UCHAR Unknown2[48];
 		SIZE_T NumberOfEntries;
-	} NSI_STRUCTURE_1, * PNSI_STRUCTURE_1;
+	} NSI_STRUCTURE_1, * PNSI_STRUCTURE_1;	
 
 	typedef struct _INTERNAL_TCP_TABLE_SUBENTRY
 	{
@@ -85,5 +84,30 @@ namespace NsiHook
 	{
 		char bytesfill[12];
 
-	}NSI_STATUS_ENTRY, * PNSI_STATUS_ENTRY;
+	}NSI_STATUS_ENTRY, *PNSI_STATUS_ENTRY;
+
+	template <typename T>
+#pragma pack(push, 4)
+	struct NSI_PARAM
+	{
+		//
+		// Total 3CH size
+		//
+		T UnknownParam1;
+		T UnknownParam2;
+		T UnknownParam3;
+		T UnknownParam4;
+		T UnknownParam5;
+		T UnknownParam6;
+		VOID* POINTER_32 lpMem;
+		T UnknownParam8;
+		T UnknownParam9;
+		T UnknownParam10;
+		NSI_STATUS_ENTRY* POINTER_32 lpStatus;
+		T UnknownParam12;
+		T UnknownParam13;
+		T UnknownParam14;
+		T TcpConnCount;
+	};
+#pragma pack(pop)
 }

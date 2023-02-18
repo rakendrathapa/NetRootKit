@@ -1,6 +1,7 @@
 #pragma once
 #include "Ip2string.h"
 #include "NetNSIHook.h"
+#include "NetTCPHook.h"
 
 #ifndef TAG_NET
 #define TAG_NET 'TNET' 

