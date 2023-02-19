@@ -9,12 +9,6 @@ namespace NsiHook
 
 	BOOLEAN NetNSIFreeHook();
 
-	NTSTATUS NetNSIProxyCompletionRoutineExperiment(
-		IN PDEVICE_OBJECT  DeviceObject,
-		IN PIRP  Irp,
-		IN PVOID  Context
-	);
-
 	NTSTATUS NetNSIProxyCompletionRoutineX86(
 		IN PDEVICE_OBJECT  DeviceObject,
 		IN PIRP  Irp,
@@ -60,24 +54,6 @@ namespace NsiHook
 		PEPROCESS RequestingProcess;
 	} HOOKED_IO_COMPLETION, * PHOOKED_IO_COMPLETION;
 
-	typedef struct _NSI_STRUCTURE_ENTRY {
-		ULONG IpAddress;
-		UCHAR Unknown[52];
-	} NSI_STRUCTURE_ENTRY, * PNSI_STRUCTURE_ENTRY;
-
-	typedef struct _NSI_STRUCTURE_2 {
-		UCHAR Unknown[32];
-		NSI_STRUCTURE_ENTRY EntriesStart[1];
-	} NSI_STRUCTURE_2, * PNSI_STRUCTURE_2;
-
-	typedef struct _NSI_STRUCTURE_1 {
-		UCHAR Unknown1[40];
-		PNSI_STRUCTURE_2 Entries;
-		SIZE_T EntrySize;
-		UCHAR Unknown2[48];
-		SIZE_T NumberOfEntries;
-	} NSI_STRUCTURE_1, * PNSI_STRUCTURE_1;	
-
 	typedef struct _INTERNAL_TCP_TABLE_SUBENTRY
 	{
 		char bytesfill0[2];
@@ -95,9 +71,22 @@ namespace NsiHook
 
 	typedef struct _NSI_STATUS_ENTRY
 	{
-		char bytesfill[12];
+		ULONG dwState;
+		char bytesfill[8];
 
 	}NSI_STATUS_ENTRY, *PNSI_STATUS_ENTRY;
+
+	typedef struct _NSI_PROCESSID_INFO
+	{
+		ULONG dwUdpProId;
+		ULONG UnknownParam2;
+		ULONG UnknownParam3;
+		ULONG dwProcessId;
+		ULONG UnknownParam5;
+		ULONG UnknownParam6;
+		ULONG UnknownParam7;
+		ULONG UnknownParam8;
+	}NSI_PROCESSID_INFO, * PNSI_PROCESSID_INFO;
 
 	struct NSI_PARAM
 	{
@@ -121,37 +110,11 @@ namespace NsiHook
 		DWORD TcpConnCount;
 	};
 
-	typedef struct _MIB_TCPROW_OWNER_PID
-	{
-		ULONG       dwState;
-		ULONG       dwLocalAddr;
-		ULONG       dwLocalPort;
-		ULONG       dwRemoteAddr;
-		ULONG       dwRemotePort;
-		ULONG       dwOwningPid;
-	} MIB_TCPROW_OWNER_PID, * PMIB_TCPROW_OWNER_PID;
-
-	typedef struct _NSI_STATUS_ENTRY_2
-	{
-		ULONG dwState;
-		char bytesfill[8];
-
-	}NSI_STATUS_ENTRY_2, *PNSI_STATUS_ENTRY_2;
-
-	typedef struct _NSI_PROCESSID_INFO
-	{
-		ULONG dwUdpProId;
-		ULONG UnknownParam2;
-		ULONG UnknownParam3;
-		ULONG dwProcessId;
-		ULONG UnknownParam5;
-		ULONG UnknownParam6;
-		ULONG UnknownParam7;
-		ULONG UnknownParam8;
-	}NSI_PROCESSID_INFO, * PNSI_PROCESSID_INFO;
-
 	typedef struct _NSI_PARAM_2
 	{
+		//
+		// Total 70H size
+		//
 		ULONG_PTR UnknownParam1;
 		SIZE_T UnknownParam2;
 		PVOID UnknownParam3;
