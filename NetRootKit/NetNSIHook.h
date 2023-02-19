@@ -7,6 +7,12 @@ namespace NsiHook
 
 	BOOLEAN NetNSIFreeHook();
 
+	NTSTATUS NetNSIProxyCompletionRoutineX86(
+		IN PDEVICE_OBJECT  DeviceObject,
+		IN PIRP  Irp,
+		IN PVOID  Context
+	);
+
 	NTSTATUS NetNSIProxyCompletionRoutine(
 		IN PDEVICE_OBJECT  DeviceObject,
 		IN PIRP  Irp,
@@ -69,7 +75,7 @@ namespace NsiHook
 	{
 		char bytesfill0[2];
 		USHORT Port;
-		DWORD dwIP;
+		ULONG dwIP;
 		char bytesfill[20];
 	}INTERNAL_TCP_TABLE_SUBENTRY, * PINTERNAL_TCP_TABLE_SUBENTRY;
 
@@ -86,28 +92,25 @@ namespace NsiHook
 
 	}NSI_STATUS_ENTRY, *PNSI_STATUS_ENTRY;
 
-	template <typename T>
-#pragma pack(push, 4)
 	struct NSI_PARAM
 	{
 		//
 		// Total 3CH size
 		//
-		T UnknownParam1;
-		T UnknownParam2;
-		T UnknownParam3;
-		T UnknownParam4;
-		T UnknownParam5;
-		T UnknownParam6;
+		DWORD UnknownParam1;
+		DWORD UnknownParam2;
+		DWORD UnknownParam3;
+		DWORD UnknownParam4;
+		DWORD UnknownParam5;
+		DWORD UnknownParam6;
 		VOID* POINTER_32 lpMem;
-		T UnknownParam8;
-		T UnknownParam9;
-		T UnknownParam10;
+		DWORD UnknownParam8;
+		DWORD UnknownParam9;
+		DWORD UnknownParam10;
 		NSI_STATUS_ENTRY* POINTER_32 lpStatus;
-		T UnknownParam12;
-		T UnknownParam13;
-		T UnknownParam14;
-		T TcpConnCount;
+		DWORD UnknownParam12;
+		DWORD UnknownParam13;
+		DWORD UnknownParam14;
+		DWORD TcpConnCount;
 	};
-#pragma pack(pop)
 }
