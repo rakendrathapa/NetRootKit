@@ -1,11 +1,19 @@
 #pragma once
 #include <wdm.h>
 
+typedef ULONG DWORD;
+
 namespace NsiHook
 {
 	NTSTATUS NetHookNSIProxy();
 
 	BOOLEAN NetNSIFreeHook();
+
+	NTSTATUS NetNSIProxyCompletionRoutineExperiment(
+		IN PDEVICE_OBJECT  DeviceObject,
+		IN PIRP  Irp,
+		IN PVOID  Context
+	);
 
 	NTSTATUS NetNSIProxyCompletionRoutineX86(
 		IN PDEVICE_OBJECT  DeviceObject,
@@ -41,7 +49,6 @@ namespace NsiHook
 	//
 	//
 	constexpr ULONG IOCTL_NSI_GETALLPARAM = 0x12001B;
-	typedef unsigned long DWORD;
 
 	extern PDRIVER_OBJECT g_NetNSIProxyDriverObject;
 	extern PDRIVER_DISPATCH g_NetOldNSIProxyDeviceControl;
@@ -113,4 +120,54 @@ namespace NsiHook
 		DWORD UnknownParam14;
 		DWORD TcpConnCount;
 	};
+
+	typedef struct _MIB_TCPROW_OWNER_PID
+	{
+		ULONG       dwState;
+		ULONG       dwLocalAddr;
+		ULONG       dwLocalPort;
+		ULONG       dwRemoteAddr;
+		ULONG       dwRemotePort;
+		ULONG       dwOwningPid;
+	} MIB_TCPROW_OWNER_PID, * PMIB_TCPROW_OWNER_PID;
+
+	typedef struct _NSI_STATUS_ENTRY_2
+	{
+		ULONG dwState;
+		char bytesfill[8];
+
+	}NSI_STATUS_ENTRY_2, *PNSI_STATUS_ENTRY_2;
+
+	typedef struct _NSI_PROCESSID_INFO
+	{
+		ULONG dwUdpProId;
+		ULONG UnknownParam2;
+		ULONG UnknownParam3;
+		ULONG dwProcessId;
+		ULONG UnknownParam5;
+		ULONG UnknownParam6;
+		ULONG UnknownParam7;
+		ULONG UnknownParam8;
+	}NSI_PROCESSID_INFO, * PNSI_PROCESSID_INFO;
+
+	typedef struct _NSI_PARAM_2
+	{
+		ULONG_PTR UnknownParam1;
+		SIZE_T UnknownParam2;
+		PVOID UnknownParam3;
+		SIZE_T UnknownParam4;
+		ULONG UnknownParam5;
+		ULONG UnknownParam6;
+		PVOID UnknownParam7;		// TCP_ENTRIES
+		SIZE_T UnknownParam8;		// EntrySize
+		PVOID UnknownParam9;
+		SIZE_T UnknownParam10;
+		PVOID UnknownParam11;
+		SIZE_T UnknownParam12;
+		PVOID UnknownParam13;
+		SIZE_T UnknownParam14;
+		SIZE_T ConnCount;
+
+	}NSI_PARAM_2, * PNSI_PARAM_2;
+
 }
