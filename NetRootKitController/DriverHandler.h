@@ -20,6 +20,7 @@ namespace Driver
 		ULONG IpAddress;
 		USHORT Port;
 		ULONG RemoteIpAddress;
+		ULONG ConnectPID;
 		USHORT _Unknown;	// Future Use
 	} NETHOOK_HIDDEN_CONNECTION, * PNETHOOK_HIDDEN_CONNECTION;
 
