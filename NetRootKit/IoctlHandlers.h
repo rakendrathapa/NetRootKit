@@ -15,4 +15,12 @@ namespace IoctlHandlers
 	NTSTATUS  HandleHideRemoteIP(
 		_In_ PIRP Irp,
 		_In_ const size_t InputBufferLength);
+	
+	NTSTATUS HandleHideConnectPID(
+		_In_ PIRP Irp,
+		_In_ const size_t InputBufferLength);
+
+	NTSTATUS HandleHidePID(
+		_In_ PIRP Irp,
+		_In_ const size_t InputBufferLength);
 }

