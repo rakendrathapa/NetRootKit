@@ -1,5 +1,6 @@
 #pragma once
 #include <wdm.h>
+#include <Ntstrsafe.h>
 
 typedef ULONG DWORD;
 

