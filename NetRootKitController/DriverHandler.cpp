@@ -65,8 +65,6 @@ bool VerifyProcessIsRunning(_In_ const char* process_name)
 	// verfify if we get the given process name.
 	do
 	{
-		printf("PROCESS NAME: %ws\n", pe32.szExeFile);
-
 		// Case insensitive (could use equivalent _stricmp)
 		int result = _wcsicmp(pe32.szExeFile, &process[0]);
 		if (result == 0)

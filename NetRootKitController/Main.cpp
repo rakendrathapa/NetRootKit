@@ -4,7 +4,7 @@ int main(int argc, const char* argv[])
 {
 	if (argc < 2)
 	{
-		std::cerr << "Missing Command Argument. (check-connection, hide-ip, hide-port, hide-remote-ip, hide-pid, hide-connect-pid)" << std::endl;
+		std::cerr << "Missing Command Argument. (check-connection, hide-ip, hide-port, hide-remote-ip, hide-pid, hide-connect-pid, hide-connect-process)" << std::endl;
 		return -1;
 	}
 
@@ -46,7 +46,7 @@ int main(int argc, const char* argv[])
 	}
 	else
 	{
-		std::cerr << "Command Not Valid. (check-connection, hide-ip, hide-port, hide-remote-ip, hide-pid, hide-connect-pid)" << std::endl;
+		std::cerr << "Command Not Valid. (check-connection, hide-ip, hide-port, hide-remote-ip, hide-pid, hide-connect-pid, hide-connect-process)" << std::endl;
 		return -1;
 	}
 

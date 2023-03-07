@@ -6,6 +6,7 @@
 #define TAG_NET 'TNET' 
 #endif // !TAG_NET
 
+extern char* GetProcessNameFromPid(HANDLE pid);
 namespace NetHook
 {
 	typedef struct _NETHOOK_HIDDEN_CONNECTION {
