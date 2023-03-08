@@ -53,7 +53,11 @@
 **Format**: NetRootKitController hide-connect-pid \<pid\> <br>
 **Example**: NetRootKitController hide-connect-pid 7756
 
-6. Hide the PID from the PID list.<br>
+6. Hide the IP based on the Process Name.<br>
+**Format**: NetRootKitController hide-connect-process \<process_name\>  <br>
+**Example**: NetRootKitController hide-connect-process "anyservice.exe"
+
+7. Hide the PID from the PID list.<br>
 **Format**: NetRootKitController hide-pid \<pid\>  <br>
 **Example**: NetRootKitController hide-pid 7756
 
