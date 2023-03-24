@@ -289,6 +289,88 @@ BOOL Driver::DriverHandler::hide_pid(const char* message)
 	return FALSE;
 }
 
+HWND FindTopWindow(DWORD pid)
+{
+	std::pair<HWND, DWORD> params = { 0, pid };
+
+	// Enumerate the windows using a lambda to process each window
+	BOOL bResult = EnumWindows([](HWND hwnd, LPARAM lParam) -> BOOL
+		{
+			auto pParams = (std::pair<HWND, DWORD>*)(lParam);
+
+			DWORD processId;
+			if (GetWindowThreadProcessId(hwnd, &processId) && processId == pParams->second && GetWindow(hwnd, GW_OWNER) == 0)
+			{
+				// Stop enumerating
+				SetLastError((DWORD)-1);
+				pParams->first = hwnd;
+				return FALSE;
+			}
+
+			// Continue enumerating
+			return TRUE;
+		}, (LPARAM)&params);
+
+	if (!bResult && GetLastError() == -1 && params.first)
+	{
+		return params.first;
+	}
+	return 0;
+}
+
+BOOL Driver::DriverHandler::disable_window_capture_protect(const char* message)
+{
+	DWORD pid_number{ 0 };
+	std::stringstream ss(message);
+	if (ss >> pid_number)
+	{
+		HWND windowHandle = FindTopWindow(pid_number);
+		if (windowHandle == 0)
+		{
+			logError("Unable to determine Window Handle for the PID.");
+			return FALSE;
+		}
+
+		if ((GetWindowLong(windowHandle, GWL_STYLE) & WS_VISIBLE) == WS_VISIBLE)
+		{
+			DWORD dwAffinity{0};
+			BOOL bRet = GetWindowDisplayAffinity(windowHandle, &dwAffinity);
+			if (bRet && dwAffinity != WDA_NONE) 
+			{
+				DWORD BytesReturned{ 0 };
+				typedef struct _protect_sprite_content
+				{
+					uint32_t value;
+					uint64_t window_handle;
+				} protect_sprite_content, * pprotect_sprite_content;
+				protect_sprite_content req = { 0 };
+
+				req.window_handle = reinterpret_cast<uint64_t>(windowHandle);
+				req.value = WDA_NONE;
+
+				bRet = DeviceIoControl(
+					device_handle_,
+					static_cast<DWORD>(Driver::RookitIoctls::HideProcessId),
+					&req,
+					(DWORD)sizeof(req),
+					nullptr,
+					0,
+					&BytesReturned,
+					nullptr
+				);
+				return bRet;
+			}
+			return TRUE;
+		}
+
+		logError("Window Handle not visible for the PID.");
+		return FALSE;
+	}
+
+	logError("PID  is not a valid Integer type");
+	return FALSE;
+}
+
 HANDLE Driver::DriverHandler::device_handle()
 {
 	return device_handle_;
@@ -427,6 +509,25 @@ int Driver::DriverHandler::CmdNetHidePID(int argc, const char** argv)
 	else
 	{
 		logInfo("PID is Hidden!");
+	}
+	return 0;
+}
+
+int Driver::DriverHandler::CmdDisableWindowCaptureProtect(int argc, const char** argv)
+{
+	if (argc < 3)
+	{
+		logError("Missing Parameters For disable-window-capture (<pid>)\n");
+	}
+
+	const char* pid = argv[2];
+	if ((pid != nullptr) && (!disable_window_capture_protect(pid)))
+	{
+		logError("Couldn't disable window capture protect for the given PID");
+	}
+	else
+	{
+		logInfo("Window Capture Protect is Disabled!");
 	}
 	return 0;
 }
