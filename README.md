@@ -61,6 +61,10 @@
 **Format**: NetRootKitController hide-pid \<pid\>  <br>
 **Example**: NetRootKitController hide-pid 7756
 
+8. Disable Screen Capture Protection by Hooking SetWindowDisplayAffinity in Kernel.
+**Format**: NetRootKitController disable-window-capture \<pid\>  <br>
+**Example**: NetRootKitController disable-window-capture 7756
+
 ## Application: GetTCPConnections
 | Commands | Description |
 |---|---|
