@@ -1,5 +1,4 @@
 #pragma once
-#include <Ntifs.h>
 
 namespace HideProcess
 {

@@ -1,5 +1,4 @@
 #pragma once
-#include <ntifs.h>
 
 namespace IoctlHandlers
 {
@@ -25,6 +24,10 @@ namespace IoctlHandlers
 		_In_ const size_t InputBufferLength);
 
 	NTSTATUS HandleHidePID(
+		_In_ PIRP Irp,
+		_In_ const size_t InputBufferLength);
+
+	NTSTATUS DisableWindowCaptureProtect(
 		_In_ PIRP Irp,
 		_In_ const size_t InputBufferLength);
 }

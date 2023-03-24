@@ -1,5 +1,4 @@
-#include "HideProcess.h"
-#include "NetworkHook.h"
+#include "Driver.h"
 
 NetHook::PNET_CONNECTION_ENTRY g_NetworkLinkedListHead = NULL;
 NetHook::PNET_CONNECTION_ENTRY g_NetworkLinkedListTail = NULL;

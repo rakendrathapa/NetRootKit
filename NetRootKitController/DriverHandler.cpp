@@ -327,7 +327,7 @@ BOOL Driver::DriverHandler::disable_window_capture_protect(const char* message)
 		HWND windowHandle = FindTopWindow(pid_number);
 		if (windowHandle == 0)
 		{
-			logError("Unable to determine Window Handle for the PID.");
+			logError("Unable to determine Window Handle for the PID.\n");
 			return FALSE;
 		}
 
@@ -340,17 +340,19 @@ BOOL Driver::DriverHandler::disable_window_capture_protect(const char* message)
 				DWORD BytesReturned{ 0 };
 				typedef struct _protect_sprite_content
 				{
+					ULONG pid;
 					uint32_t value;
 					uint64_t window_handle;
 				} protect_sprite_content, * pprotect_sprite_content;
 				protect_sprite_content req = { 0 };
 
+				req.pid = pid_number;
 				req.window_handle = reinterpret_cast<uint64_t>(windowHandle);
 				req.value = WDA_NONE;
 
 				bRet = DeviceIoControl(
 					device_handle_,
-					static_cast<DWORD>(Driver::RookitIoctls::HideProcessId),
+					static_cast<DWORD>(Driver::RookitIoctls::DisableWindowCaptureProtect),
 					&req,
 					(DWORD)sizeof(req),
 					nullptr,
@@ -523,7 +525,7 @@ int Driver::DriverHandler::CmdDisableWindowCaptureProtect(int argc, const char**
 	const char* pid = argv[2];
 	if ((pid != nullptr) && (!disable_window_capture_protect(pid)))
 	{
-		logError("Couldn't disable window capture protect for the given PID");
+		logError("Couldn't disable window capture protect for the given PID\n");
 	}
 	else
 	{

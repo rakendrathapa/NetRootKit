@@ -1,5 +1,4 @@
-#include "HideProcess.h"
-#include "NetworkHook.h"
+#include "Driver.h"
 
 ULONG HideProcess::GetUniquePIDOffSetFromEProcess()
 {

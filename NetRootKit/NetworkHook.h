@@ -1,5 +1,4 @@
 #pragma once
-#include "Ip2string.h"
 #include "NetNSIHook.h"
 
 #ifndef TAG_NET

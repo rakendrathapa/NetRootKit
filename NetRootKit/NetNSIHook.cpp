@@ -1,5 +1,4 @@
-#include <ntifs.h>
-#include "NetworkHook.h"
+#include "Driver.h"
 
 PDRIVER_OBJECT NsiHook::g_NetNSIProxyDriverObject = nullptr;
 PDRIVER_DISPATCH NsiHook::g_NetOldNSIProxyDeviceControl = nullptr;

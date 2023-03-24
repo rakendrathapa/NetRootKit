@@ -82,11 +82,17 @@
     <DriverSign>
       <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
     </DriverSign>
+    <Link>
+      <AdditionalDependencies>%(AdditionalDependencies);$(KernelBufferOverflowLib);$(DDK_LIB_PATH)ntoskrnl.lib;$(DDK_LIB_PATH)hal.lib;$(DDK_LIB_PATH)wmilib.lib;Aux_Klib.lib</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DriverSign>
       <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
     </DriverSign>
+    <Link>
+      <AdditionalDependencies>%(AdditionalDependencies);$(KernelBufferOverflowLib);$(DDK_LIB_PATH)ntoskrnl.lib;$(DDK_LIB_PATH)hal.lib;$(DDK_LIB_PATH)wmilib.lib;Aux_Klib.lib</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <Inf Include="NetRootKit.inf" />
@@ -95,6 +101,7 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="DisplayHook.cpp" />
     <ClCompile Include="HideProcess.cpp" />
     <ClCompile Include="IoctlHandlers.cpp" />
     <ClCompile Include="NetNSIHook.cpp" />
@@ -102,6 +109,8 @@
     <ClCompile Include="NetworkHook.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DisplayHook.h" />
+    <ClInclude Include="Driver.h" />
     <ClInclude Include="HideProcess.h" />
     <ClInclude Include="IoctlHandlers.h" />
     <ClInclude Include="NetNSIHook.h" />

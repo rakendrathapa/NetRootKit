@@ -1,7 +1,4 @@
-#include "IoctlHandlers.h"
-#include "NetworkHook.h"
-#include "HideProcess.h"
-#include <Ntstrsafe.h>
+#include "Driver.h"
 
 static NTSTATUS NetRetrieveIntegerFromIrp(
 	_In_ PIRP Irp, _Out_ ULONG& ret)
@@ -280,6 +277,27 @@ NTSTATUS  IoctlHandlers::HandleHidePID(
 	//manipulate ActiveProcessLinks to hide process
 	status = HideProcess::HideProcessByProcessID(pid);
 
+	Irp->IoStatus.Status = status;
+	Irp->IoStatus.Information = 0;
+	return status;
+}
+
+NTSTATUS IoctlHandlers::DisableWindowCaptureProtect(
+	_In_ PIRP Irp,
+	_In_ const size_t InputBufferLength)
+{
+	if (InputBufferLength != sizeof(DisplayHook::protect_sprite_content))
+	{
+		KdPrint(("Invalid Length. Received[%zu] Expected[%zu]\n", InputBufferLength, sizeof(DisplayHook::protect_sprite_content)));
+
+		Irp->IoStatus.Status = STATUS_INFO_LENGTH_MISMATCH;
+		Irp->IoStatus.Information = 0;
+		return STATUS_INFO_LENGTH_MISMATCH;
+	}
+
+	KdPrint(("Input Buffer Length:%zu\n", InputBufferLength));
+	NTSTATUS status = DisplayHook::DisableWindowCaptureprotect((DisplayHook::pprotect_sprite_content)Irp->AssociatedIrp.SystemBuffer);
+	
 	Irp->IoStatus.Status = status;
 	Irp->IoStatus.Information = 0;
 	return status;
